@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v0.1
+milestone_name: milestone
+status: unknown
+last_updated: "2026-03-27T20:12:59.029Z"
+progress:
+  total_phases: 5
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 1
+  percent: 0
+---
+
 # VoiceApp — Project State
 
 **Last updated:** 2026-03-27
@@ -19,12 +33,12 @@
 | Field | Value |
 |-------|-------|
 | Phase | 1 — Foundation |
-| Plan | Not started |
-| Status | Ready to begin |
+| Plan | 3 of 3 complete (session machine + classifier) |
+| Status | Phase 1 in progress — Plans 1, 2, 3 executing in parallel |
 | Progress | 0/5 phases complete |
 
 ```
-Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
+Progress: [░░░░░░░░░░] 0%
 Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  Phase 5: ░░░
 ```
 
@@ -45,6 +59,7 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 ## Accumulated Context
 
 ### Key Decisions Made
+
 - Session state machine: plain `Map<userId, SessionState>` — no XState (50KB overhead for 5 states not justified for hackathon)
 - BullMQ `upsertJobScheduler` for cron — not `node-cron` (durable across restarts)
 - ElevenLabs `eleven_flash_v2_5` model locked — `eleven_turbo_v2_5` is deprecated
@@ -52,8 +67,12 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - OGG/Opus (`opus_48000_32`) locked as ElevenLabs output format for WhatsApp voice notes
 - pgvector similarity queries always via `supabase.rpc('match_memories', ...)` — PostgREST cannot use `<=>` operator
 - Every backend query includes `.eq('user_id', userId)` — `service_role` bypasses RLS
+- [P1-03] web_search FAST_PATH entries placed before load_shedding/weather — prevents loadshed keyword in "find out about X" hijacking web_search intent
+- [P1-03] normaliseE164 always returns `+${digits}` — never raw input; strips dashes/spaces even when + prefix present
+- [P1-03] Removed `what is ` from web_search classifier — too broad; weather pattern covers temperature/forecast keywords
 
 ### Critical Build Order Rules
+
 1. Supabase schema deploys before any code writes to the database
 2. Raw-body capture middleware on `/webhook/*` registered before any routes — HMAC check reads this, never `c.req.json()` first
 3. BullMQ worker validated with a test job before agent wiring begins
@@ -61,15 +80,18 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 5. ElevenLabs client wrapper sets `output_format: 'opus_48000_32'` from day one
 
 ### Open Questions (from research)
+
 - Which ElevenLabs voice IDs for English SA + Afrikaans? (Benchmark 3–5 pre-made voices before Phase 4)
 - EskomSePush area ID for demo user? (Hardcode Johannesburg as fallback)
 - Redis hosting? (Decide between Upstash free tier or Railway before Phase 2)
 - WhatsApp WABA Business Verification complete? (Check before demo day)
 
 ### Blockers
+
 None currently.
 
 ### Todos
+
 - [ ] Decide Redis hosting provider before Phase 2
 - [ ] Benchmark ElevenLabs voice IDs before Phase 4
 - [ ] Confirm WABA tier status in Meta Business Manager before Phase 5 demo prep
@@ -83,8 +105,12 @@ None currently.
 | Webhook response time | < 200ms | TBD |
 | First audio chunk (WebSocket) | < 500ms | TBD |
 | Ambient query spoken response | < 3 seconds | TBD |
-| Fast-path intent classification | < 1ms | TBD |
-| Test suite | 85+ passing | TBD |
+| Fast-path intent classification | < 1ms | 0.005ms (measured) |
+| Test suite | 85+ passing | 36 passing (Phase 1 Plan 3) |
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01-foundation P03 | 12min | 3 tasks | 9 files |
 
 ---
 
@@ -93,6 +119,7 @@ None currently.
 **To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — start with Plan 1 (Supabase schema + RLS).
 
 **Context for next session:**
+
 - All architectural constraints are embedded in ROADMAP.md "Architectural Constraints" table
 - Research detail: `.planning/research/ARCHITECTURE.md` and `.planning/research/SUMMARY.md`
 - Stack versions pinned: Bun 1.3.11, Hono 4.12.9, BullMQ 5.45.0, @anthropic-ai/sdk 0.80.0, @elevenlabs/elevenlabs-js 2.39.0
