@@ -38,10 +38,11 @@ const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Contact management
   [/save (a )?contact|add (a )?contact|save .+ as (a )?contact|add .+ as (a )?contact/i, 'save_contact'],
   [/make .+ (a )?priority|set .+ as priority|priority contact/i, 'set_priority'],
+  // Explicit search requests — before ambient queries to avoid load/weather keywords hijacking "find out about X"
+  [/search for|look up|google|find out|tell me about/i, 'web_search'],
   // Ambient queries
   [/load.?shed|eskom|power cut|power outage|loadshed/i, 'load_shedding'],
   [/weather|temperature|rain|forecast|hot today|cold today|how warm|how cold/i, 'weather'],
-  [/search for|look up|google|find out|tell me about|what is /i, 'web_search'],
 ]
 
 /**

@@ -17,10 +17,8 @@ export function normaliseE164(raw: string): string {
     // Local SA format: 0821234567 → +27821234567
     return `+27${digits.slice(1)}`
   }
-  if (!raw.startsWith('+')) {
-    return `+${digits}`
-  }
-  return raw.startsWith('+') ? raw : `+${digits}`
+  // Always return +digits — strips dashes, spaces, and other non-digit chars
+  return `+${digits}`
 }
 
 /**
