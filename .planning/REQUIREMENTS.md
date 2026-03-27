@@ -14,7 +14,7 @@
 - [ ] **INFRA-03**: `pgvector` extension enabled; `match_memories` and `resolve_contact_name` SQL helper functions deployed
 - [x] **INFRA-04**: Bun/Hono server running on port 3000 with health check endpoint and environment variable validation at startup
 - [x] **INFRA-05**: CORS configured for frontend origin; Bearer token auth middleware on all `/api/*` routes
-- [ ] **INFRA-06**: Session state machine enforced: valid states `idle → listening → composing → awaiting_approval → playing`
+- [x] **INFRA-06**: Session state machine enforced: valid states `idle → listening → composing → awaiting_approval → playing`
 
 ### WhatsApp Integration
 
@@ -69,8 +69,8 @@
 
 ### User Isolation
 
-- [ ] **ISO-01**: All agent tool queries explicitly filter by `user_id` (service_role bypasses RLS — app-layer isolation required)
-- [ ] **ISO-02**: Phone number normalised to E.164 on every inbound webhook before lookup/upsert
+- [x] **ISO-01**: All agent tool queries explicitly filter by `user_id` (service_role bypasses RLS — app-layer isolation required)
+- [x] **ISO-02**: Phone number normalised to E.164 on every inbound webhook before lookup/upsert
 - [x] **ISO-03**: WebSocket sessions scoped per `userId` — no cross-user message delivery possible
 
 ### Test Suite

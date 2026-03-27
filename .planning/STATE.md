@@ -33,9 +33,9 @@ progress:
 | Field | Value |
 |-------|-------|
 | Phase | 1 — Foundation |
-| Plan | 2 of 3 complete (Plans 01-01 + 01-02 done, Plan 01-03 next) |
-| Status | In progress |
-| Progress | 0/5 phases complete, 2/3 Phase 1 plans done |
+| Plan | 3 of 3 complete (all Phase 1 plans done) |
+| Status | Phase 1 complete — awaiting verification |
+| Progress | 0/5 phases complete, 3/3 Phase 1 plans done |
 
 ```
 Progress: [░░░░░░░░░░] 0%
@@ -75,6 +75,9 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - [01-01] HNSW index in 002_functions.sql — runs after 001_schema.sql creates memory_store table (dependency order)
 - [01-01] match_memories caps at LEAST(match_count, 20) — prevents unbounded RPC result sets
 - [01-01] resolve_contact_name returns NULL for unknown phone — callers synthesize display from raw phone number
+- [P1-03] web_search FAST_PATH entries placed before load_shedding/weather — prevents loadshed keyword in "find out about X" hijacking web_search intent
+- [P1-03] normaliseE164 always returns `+${digits}` — never raw input; strips dashes/spaces even when + prefix present
+- [P1-03] Removed `what is ` from web_search classifier — too broad; weather pattern covers temperature/forecast keywords
 
 ### Critical Build Order Rules
 
@@ -110,8 +113,12 @@ None currently.
 | Webhook response time | < 200ms | TBD |
 | First audio chunk (WebSocket) | < 500ms | TBD |
 | Ambient query spoken response | < 3 seconds | TBD |
-| Fast-path intent classification | < 1ms | TBD |
-| Test suite | 85+ passing | TBD |
+| Fast-path intent classification | < 1ms | 0.005ms (measured) |
+| Test suite | 85+ passing | 36 passing (Phase 1 Plan 3) |
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01-foundation P03 | 12min | 3 tasks | 9 files |
 
 ---
 | Phase 01 P02 | 13 | 3 tasks | 11 files |
