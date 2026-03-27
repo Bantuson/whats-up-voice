@@ -21,6 +21,7 @@ import { healthRouter } from './routes/health'
 import { webhookRouter } from './routes/webhook'
 import { apiRouter } from './routes/api'
 import { wsConnections } from './ws/manager'
+import './queue/worker'  // boots heartbeat worker at startup
 
 const app = new Hono()
 
