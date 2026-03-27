@@ -1,0 +1,101 @@
+# VoiceApp
+
+## What This Is
+
+VoiceApp is a voice-native AI companion for visually impaired and hands-occupied users in South Africa. It uses WhatsApp as the social backbone — preserving existing contacts and conversation history — while a Claude agent handles composition, reading, ambient queries, and episodic memory. Everything is delivered through audio; no screen interaction is required after initial setup.
+
+## Core Value
+
+A visually impaired South African can independently send and receive WhatsApp messages entirely by voice, with full contact name resolution and a confirmation loop before sending.
+
+## Requirements
+
+### Validated
+
+(None yet — ship to validate)
+
+### Active
+
+**P0 — Hackathon v0.1 must-haves**
+- [ ] Voice compose + send WhatsApp messages with approval loop before sending
+- [ ] Read incoming messages aloud with resolved contact names
+- [ ] Save new contacts entirely by voice (unknown number flow + proactive save)
+- [ ] Priority contact flagging — interrupt vs batch surface decisions
+- [ ] Morning briefing cron (load shedding + weather + overnight message digest)
+- [ ] Heartbeat engine — event-driven surface decision gate (interrupt/batch/silent/skip)
+- [ ] Supabase schema with RLS user isolation across all tables
+- [ ] WhatsApp webhook handler with HMAC signature verification and user upsert
+- [ ] Bun/Hono backend with session state machine
+
+**P1 — Hackathon v0.1 nice-to-haves**
+- [ ] Ambient queries: load shedding (EskomSePush) and weather (OpenWeather)
+- [ ] Ambient web search via Tavily
+- [ ] Voice note playback for received audio messages
+- [ ] Episodic memory store via pgvector (OpenAI text-embedding-3-small)
+- [ ] Cron scheduler for user routines (morning briefing, evening digest, custom reminders)
+- [ ] Caregiver dashboard — Vite + React frontend (mission control aesthetic)
+- [ ] English + Afrikaans TTS via ElevenLabs
+- [ ] 85+ test cases across 11 suites (bun test)
+
+### Out of Scope
+
+- isiZulu TTS — deferred to v0.2 (Google Cloud TTS), complexity not justified for hackathon
+- iOS native integration — Android first, background audio restrictions make iOS harder
+- Group message creation — reading groups only in v0.1, send flow adds significant complexity
+- Research-to-podcast synthesis — v0.2 feature, requires multi-step research agent
+- Multi-device session management — single device per user for v0.1
+- Payments integration — not relevant to hackathon scope
+- Proactive load shedding push alerts — deferred to v0.2
+- WhatsApp device contact list sync — API doesn't expose it; voice-populated contacts only
+
+## Context
+
+- **Hackathon build:** Target 6–7 hours for a complete working demo. Build order: Supabase schema → backend skeleton → webhook → agent tools → heartbeat engine → cron → voice command route → tests → frontend → demo polish.
+- **South African context:** Load shedding is a daily reality. EskomSePush API provides per-area schedules. Morning briefing must lead with load shedding times.
+- **WhatsApp Cloud API constraint:** Server-side webhook only — no native app-level message interception. All messages pass through the backend.
+- **Identity anchor:** WhatsApp phone number (E.164 format) is the user identity — no separate auth system. Backend operates as Supabase `service_role`.
+- **Contact model:** The `user_contacts` table is entirely this product's construct. WhatsApp Business API provides sender phone but not device contacts. Contacts are added only via voice flows.
+- **Agent SDK:** Claude Agents SDK (`@anthropic-ai/sdk`) with orchestrator + sub-agents pattern. Fast-path regex intent classification before LLM invocation to keep latency under 500ms for common commands.
+- **TTS language:** ElevenLabs for English and Afrikaans in v0.1. Agent responses must be spoken-first — no markdown, no lists, no formatting.
+- **Company:** Mzansi Agentive (Pty) Ltd — Enterprise No. 2026/179878/07
+
+## Constraints
+
+- **Tech stack:** Bun v1.x + Hono v4 (backend), Vite + React 18 (frontend), Supabase PostgreSQL 15 + pgvector, BullMQ + Redis for job queue — fixed, no substitutions
+- **Timeline:** Hackathon build — ~7 hours total, demo-ready on 27 March 2026
+- **Performance:** Ambient queries (load shedding, weather, search) must return spoken response in under 3 seconds
+- **Security:** HMAC `x-hub-signature-256` verification on every webhook POST; RLS enforced at DB layer for all tables; Bearer token auth on `/api/*` routes
+- **Language:** All agent spoken responses must be conversation-natural — no markdown, no bullet points, one question at a time
+- **Model:** `claude-sonnet-4-6` for agent intelligence
+
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| WhatsApp Cloud API (not Baileys/WA Web) | Official Meta API — no ban risk, supports Business accounts, HMAC webhook security | — Pending |
+| Bun runtime over Node.js | Faster startup, built-in test runner (`bun test`), TypeScript native | — Pending |
+| Supabase RLS over application-layer auth | DB-layer isolation means bugs can't leak cross-user data even if app code is wrong | — Pending |
+| Fast-path regex intent classification | Keeps common commands under 500ms without LLM invocation | — Pending |
+| BullMQ for heartbeat event queue | Durable queue with retry — messages survive process restart | — Pending |
+| ElevenLabs over Google Cloud TTS for EN/AF | Better naturalness for Afrikaans, simpler API for hackathon | — Pending |
+| Voice-populated contacts only | Privacy-respecting — agent only knows contacts user has consciously introduced | — Pending |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+---
+*Last updated: 2026-03-27 after initialization*
