@@ -1,6 +1,6 @@
 # VoiceApp — Project State
 
-**Last updated:** 2026-03-27
+**Last updated:** 2026-03-27T20:08:32Z
 **Project:** VoiceApp
 **Milestone:** v0.1 Hackathon Build
 
@@ -19,8 +19,8 @@
 | Field | Value |
 |-------|-------|
 | Phase | 1 — Foundation |
-| Plan | Not started |
-| Status | Ready to begin |
+| Plan | 1 of 3 complete (Plan 01: Supabase Schema + RLS) |
+| Status | In progress |
 | Progress | 0/5 phases complete |
 
 ```
@@ -52,6 +52,10 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - OGG/Opus (`opus_48000_32`) locked as ElevenLabs output format for WhatsApp voice notes
 - pgvector similarity queries always via `supabase.rpc('match_memories', ...)` — PostgREST cannot use `<=>` operator
 - Every backend query includes `.eq('user_id', userId)` — `service_role` bypasses RLS
+- [01-01] Two policies per table: auth.uid() user policy + service_role bypass — defense-in-depth RLS strategy
+- [01-01] HNSW index in 002_functions.sql — runs after 001_schema.sql creates memory_store table (dependency order)
+- [01-01] match_memories caps at LEAST(match_count, 20) — prevents unbounded RPC result sets
+- [01-01] resolve_contact_name returns NULL for unknown phone — callers synthesize display from raw phone number
 
 ### Critical Build Order Rules
 1. Supabase schema deploys before any code writes to the database
@@ -90,12 +94,17 @@ None currently.
 
 ## Session Continuity
 
-**To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — start with Plan 1 (Supabase schema + RLS).
+**To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — Plans 02 (Hono server skeleton) and 03 (session state machine + classifier) remain.
+
+**Last session:** 2026-03-27T20:08:32Z — Completed Plan 01-01 (Supabase Schema + RLS)
+**Stopped at:** Completed 01-01-PLAN.md (Supabase Schema + RLS)
 
 **Context for next session:**
 - All architectural constraints are embedded in ROADMAP.md "Architectural Constraints" table
 - Research detail: `.planning/research/ARCHITECTURE.md` and `.planning/research/SUMMARY.md`
 - Stack versions pinned: Bun 1.3.11, Hono 4.12.9, BullMQ 5.45.0, @anthropic-ai/sdk 0.80.0, @elevenlabs/elevenlabs-js 2.39.0
+- Schema foundation complete: `supabase/migrations/001_schema.sql` and `002_functions.sql` ready to deploy
+- Integration tests in `tests/schema.test.ts` and `tests/isolation.test.ts` require real Supabase credentials
 
 ---
 

@@ -36,7 +36,7 @@
 5. Fast-path regex classifier returns the correct intent string for all 8 covered patterns without invoking any LLM
 
 ### Plans
-1. **Supabase schema + RLS** — Deploy all 8 tables (`users`, `user_profile`, `user_contacts`, `sessions`, `message_log`, `memory_store`, `routines`, `heartbeat_log`) with RLS user policies + service_role bypass; enable `pgvector`; create HNSW index on `memory_store.embedding`; deploy `match_memories` and `resolve_contact_name` SQL functions
+1. **[DONE] Supabase schema + RLS** — Deploy all 8 tables (`users`, `user_profile`, `user_contacts`, `sessions`, `message_log`, `memory_store`, `routines`, `heartbeat_log`) with RLS user policies + service_role bypass; enable `pgvector`; create HNSW index on `memory_store.embedding`; deploy `match_memories` and `resolve_contact_name` SQL functions — **SUMMARY: 01-01-SUMMARY.md** (commits: d881fcd, 9a2848b, 21df487)
 2. **Hono server skeleton** — Bun/Hono server on port 3000 with `validateEnv()` startup guard (throws on missing vars), raw-body capture middleware on `/webhook/*` (must precede all route registration), CORS for frontend origin, Bearer token auth middleware on `/api/*`, health check endpoint
 3. **Session state machine + intent classifier** — Pure-logic `Map<userId, SessionState>` with explicit transition guard for 5 states (idle/listening/composing/awaiting_approval/playing); fast-path regex classifier for 8 intents; `spokenError()` fallback utility; `formatPhoneForSpeech()` utility; phone E.164 normalisation helper
 
