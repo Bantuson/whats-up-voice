@@ -12,7 +12,12 @@ A visually impaired South African can independently send and receive WhatsApp me
 
 ### Validated
 
-(None yet — ship to validate)
+**Validated in Phase 1: Foundation**
+- Supabase schema with RLS user isolation across all tables (INFRA-01, INFRA-02, INFRA-03)
+- Bun/Hono backend with env validation, CORS, Bearer auth, health endpoint, WebSocket scaffold (INFRA-04, INFRA-05, ISO-03)
+- Session state machine with explicit transition guards — 5 states, pure TypeScript (INFRA-06)
+- E.164 phone normalisation for SA numbers (ISO-02)
+- Fast-path regex intent classifier — 10 patterns, < 0.005ms/call, no LLM (ISO-01, AGENT-02 partial)
 
 ### Active
 
@@ -72,13 +77,13 @@ A visually impaired South African can independently send and receive WhatsApp me
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| WhatsApp Cloud API (not Baileys/WA Web) | Official Meta API — no ban risk, supports Business accounts, HMAC webhook security | — Pending |
-| Bun runtime over Node.js | Faster startup, built-in test runner (`bun test`), TypeScript native | — Pending |
-| Supabase RLS over application-layer auth | DB-layer isolation means bugs can't leak cross-user data even if app code is wrong | — Pending |
-| Fast-path regex intent classification | Keeps common commands under 500ms without LLM invocation | — Pending |
-| BullMQ for heartbeat event queue | Durable queue with retry — messages survive process restart | — Pending |
-| ElevenLabs over Google Cloud TTS for EN/AF | Better naturalness for Afrikaans, simpler API for hackathon | — Pending |
-| Voice-populated contacts only | Privacy-respecting — agent only knows contacts user has consciously introduced | — Pending |
+| WhatsApp Cloud API (not Baileys/WA Web) | Official Meta API — no ban risk, supports Business accounts, HMAC webhook security | ✓ Phase 1 (HMAC middleware in place) |
+| Bun runtime over Node.js | Faster startup, built-in test runner (`bun test`), TypeScript native | ✓ Phase 1 (bun init, bun test passing) |
+| Supabase RLS over application-layer auth | DB-layer isolation means bugs can't leak cross-user data even if app code is wrong | ✓ Phase 1 (schema+RLS deployed, isolation tests written) |
+| Fast-path regex intent classification | Keeps common commands under 500ms without LLM invocation | ✓ Phase 1 (10 patterns at 0.005ms/call measured) |
+| BullMQ for heartbeat event queue | Durable queue with retry — messages survive process restart | — Phase 2 |
+| ElevenLabs over Google Cloud TTS for EN/AF | Better naturalness for Afrikaans, simpler API for hackathon | — Phase 4 |
+| Voice-populated contacts only | Privacy-respecting — agent only knows contacts user has consciously introduced | — Phase 3 |
 
 ## Evolution
 
@@ -98,4 +103,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 after initialization*
+*Last updated: 2026-03-27 (Phase 1 complete) 2026-03-27 after initialization*
