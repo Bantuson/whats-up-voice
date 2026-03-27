@@ -26,7 +26,7 @@
 
 ### Heartbeat Engine
 
-- [ ] **HB-01**: Inbound messages enqueued to BullMQ heartbeat queue (using ioredis, `maxRetriesPerRequest: null`)
+- [x] **HB-01**: Inbound messages enqueued to BullMQ heartbeat queue (using ioredis, `maxRetriesPerRequest: null`)
 - [ ] **HB-02**: Surface decision gate evaluates in priority order: quiet hours → priority contact → unknown number → session state → message type → default
 - [ ] **HB-03**: `interrupt` decision pushes spoken text via WebSocket to active device immediately
 - [ ] **HB-04**: `batch` decision adds message to in-memory digest queue

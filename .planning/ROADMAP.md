@@ -160,7 +160,7 @@
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/3 | Not started | - |
-| 2. Webhook + Heartbeat | 0/3 | Not started | - |
+| 2. Webhook + Heartbeat | 1/3 | In Progress|  |
 | 3. Agent Intelligence | 0/3 | Not started | - |
 | 4. Voice Pipeline + Cron | 0/3 | Not started | - |
 | 5. Tests + Frontend + Demo | 0/4 | Not started | - |

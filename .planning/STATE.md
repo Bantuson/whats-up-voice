@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: unknown
-stopped_at: Plan 01-02 complete — 01-03 next
-last_updated: "2026-03-27T20:43:24.399Z"
+stopped_at: Completed 02-webhook-heartbeat-02-02-PLAN.md
+last_updated: "2026-03-27T22:00:00.696Z"
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 6
+  completed_plans: 4
   percent: 0
 ---
 
@@ -25,12 +25,14 @@ progress:
 
 **Core value:** A visually impaired South African can independently send and receive WhatsApp messages entirely by voice, with full contact name resolution and a confirmation loop before sending.
 
-**Current focus:** Phase 1 — Foundation (Supabase schema, Hono skeleton, session state machine)
+**Current focus:** Phase 02 — webhook-heartbeat
 
 ---
 
 ## Current Position
 
+Phase: 02 (webhook-heartbeat) — EXECUTING
+Plan: 2 of 3
 | Field | Value |
 |-------|-------|
 | Phase | 1 — Foundation |
@@ -79,6 +81,8 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - [P1-03] web_search FAST_PATH entries placed before load_shedding/weather — prevents loadshed keyword in "find out about X" hijacking web_search intent
 - [P1-03] normaliseE164 always returns `+${digits}` — never raw input; strips dashes/spaces even when + prefix present
 - [P1-03] Removed `what is ` from web_search classifier — too broad; weather pattern covers temperature/forecast keywords
+- [02-02] Shared redis singleton from heartbeat.ts imported by worker.ts — guarantees BullMQ Queue + Worker use identical ioredis config (maxRetriesPerRequest=null)
+- [02-02] worker.ts separated from heartbeat.ts — heartbeat.ts importable in tests without spawning live connections
 
 ### Critical Build Order Rules
 
@@ -123,13 +127,14 @@ None currently.
 
 ---
 | Phase 01 P02 | 13 | 3 tasks | 11 files |
+| Phase 02-webhook-heartbeat P02 | 2min | 2 tasks | 4 files |
 
 ## Session Continuity
 
 **To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — Plans 01-01 (schema) and 01-02 (server skeleton) are complete. Next: Plan 01-03 (session state machine + intent classifier).
 
-**Last session:** 2026-03-27 — Completed Plans 01-01 and 01-02 in parallel
-**Stopped at:** Plan 01-02 complete — 01-03 next
+**Last session:** 2026-03-27T22:00:00.680Z
+**Stopped at:** Completed 02-webhook-heartbeat-02-02-PLAN.md
 
 **Context for next session:**
 
