@@ -12,8 +12,8 @@
 - [ ] **INFRA-01**: Supabase PostgreSQL schema deployed with all 8 tables (`users`, `user_profile`, `user_contacts`, `sessions`, `message_log`, `memory_store`, `routines`, `heartbeat_log`)
 - [ ] **INFRA-02**: Row Level Security enforced on all tables with user policy + service_role bypass policy
 - [ ] **INFRA-03**: `pgvector` extension enabled; `match_memories` and `resolve_contact_name` SQL helper functions deployed
-- [ ] **INFRA-04**: Bun/Hono server running on port 3000 with health check endpoint and environment variable validation at startup
-- [ ] **INFRA-05**: CORS configured for frontend origin; Bearer token auth middleware on all `/api/*` routes
+- [x] **INFRA-04**: Bun/Hono server running on port 3000 with health check endpoint and environment variable validation at startup
+- [x] **INFRA-05**: CORS configured for frontend origin; Bearer token auth middleware on all `/api/*` routes
 - [ ] **INFRA-06**: Session state machine enforced: valid states `idle → listening → composing → awaiting_approval → playing`
 
 ### WhatsApp Integration
@@ -71,7 +71,7 @@
 
 - [ ] **ISO-01**: All agent tool queries explicitly filter by `user_id` (service_role bypasses RLS — app-layer isolation required)
 - [ ] **ISO-02**: Phone number normalised to E.164 on every inbound webhook before lookup/upsert
-- [ ] **ISO-03**: WebSocket sessions scoped per `userId` — no cross-user message delivery possible
+- [x] **ISO-03**: WebSocket sessions scoped per `userId` — no cross-user message delivery possible
 
 ### Test Suite
 

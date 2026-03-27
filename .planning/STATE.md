@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v0.1
+milestone_name: milestone
+status: unknown
+last_updated: "2026-03-27T20:13:50.790Z"
+progress:
+  total_phases: 5
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 1
+  percent: 0
+---
+
 # VoiceApp — Project State
 
 **Last updated:** 2026-03-27
@@ -19,12 +33,12 @@
 | Field | Value |
 |-------|-------|
 | Phase | 1 — Foundation |
-| Plan | Not started |
-| Status | Ready to begin |
-| Progress | 0/5 phases complete |
+| Plan | Plan 2 complete (Plan 3 next) |
+| Status | In progress |
+| Progress | 0/5 phases complete, 1/3 Phase 1 plans done |
 
 ```
-Progress: [░░░░░░░░░░░░░░░░░░░░] 0%
+Progress: [░░░░░░░░░░] 0%
 Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  Phase 5: ░░░
 ```
 
@@ -45,6 +59,11 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 ## Accumulated Context
 
 ### Key Decisions Made
+
+- [P1-02] Raw body capture middleware registered before all routes — correctness constraint for Phase 2 HMAC (app.use('/webhook/*') must be first middleware)
+- [P1-02] All Phase 1–4 packages installed in single `bun add` — keeps package.json stable across phases
+- [P1-02] Bearer auth scoped to /api/* only — /health and /webhook/* intentionally unprotected by Bearer
+- [P1-02] validateEnv() called as first statement in server.ts — before route module imports that access process.env
 - Session state machine: plain `Map<userId, SessionState>` — no XState (50KB overhead for 5 states not justified for hackathon)
 - BullMQ `upsertJobScheduler` for cron — not `node-cron` (durable across restarts)
 - ElevenLabs `eleven_flash_v2_5` model locked — `eleven_turbo_v2_5` is deprecated
@@ -54,6 +73,7 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - Every backend query includes `.eq('user_id', userId)` — `service_role` bypasses RLS
 
 ### Critical Build Order Rules
+
 1. Supabase schema deploys before any code writes to the database
 2. Raw-body capture middleware on `/webhook/*` registered before any routes — HMAC check reads this, never `c.req.json()` first
 3. BullMQ worker validated with a test job before agent wiring begins
@@ -61,15 +81,18 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 5. ElevenLabs client wrapper sets `output_format: 'opus_48000_32'` from day one
 
 ### Open Questions (from research)
+
 - Which ElevenLabs voice IDs for English SA + Afrikaans? (Benchmark 3–5 pre-made voices before Phase 4)
 - EskomSePush area ID for demo user? (Hardcode Johannesburg as fallback)
 - Redis hosting? (Decide between Upstash free tier or Railway before Phase 2)
 - WhatsApp WABA Business Verification complete? (Check before demo day)
 
 ### Blockers
+
 None currently.
 
 ### Todos
+
 - [ ] Decide Redis hosting provider before Phase 2
 - [ ] Benchmark ElevenLabs voice IDs before Phase 4
 - [ ] Confirm WABA tier status in Meta Business Manager before Phase 5 demo prep
@@ -87,12 +110,14 @@ None currently.
 | Test suite | 85+ passing | TBD |
 
 ---
+| Phase 01 P02 | 13 | 3 tasks | 11 files |
 
 ## Session Continuity
 
-**To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — start with Plan 1 (Supabase schema + RLS).
+**To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — Plan 2 (Hono skeleton) is complete. Next: Plan 3 (session state machine + intent classifier).
 
 **Context for next session:**
+
 - All architectural constraints are embedded in ROADMAP.md "Architectural Constraints" table
 - Research detail: `.planning/research/ARCHITECTURE.md` and `.planning/research/SUMMARY.md`
 - Stack versions pinned: Bun 1.3.11, Hono 4.12.9, BullMQ 5.45.0, @anthropic-ai/sdk 0.80.0, @elevenlabs/elevenlabs-js 2.39.0
