@@ -83,6 +83,9 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - [P1-03] Removed `what is ` from web_search classifier — too broad; weather pattern covers temperature/forecast keywords
 - [02-02] Shared redis singleton from heartbeat.ts imported by worker.ts — guarantees BullMQ Queue + Worker use identical ioredis config (maxRetriesPerRequest=null)
 - [02-02] worker.ts separated from heartbeat.ts — heartbeat.ts importable in tests without spawning live connections
+- [02-01] verifyWhatsAppHmac requires sha256= prefix — bare hex strings rejected; strict format enforcement (security)
+- [02-01] src/queue/heartbeat.ts stub created with HeartbeatJobData interface — Plan 02-02 overwrites with BullMQ + ioredis
+- [02-01] to_phone stored as +${WHATSAPP_PHONE_NUMBER_ID} in message_log — env var is numeric ID, + prepended at insert time
 
 ### Critical Build Order Rules
 
