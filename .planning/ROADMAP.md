@@ -79,7 +79,7 @@
 
 **Depends on:** Phase 2 (user records exist in `users` table; messages exist in `message_log` for the ReadMessages tool; heartbeat worker can invoke agent after processing)
 
-**Requirements covered:** AGENT-01, AGENT-02, AGENT-03, AGENT-04, AGENT-05, AGENT-06, AGENT-07, AGENT-08, CONTACT-01, CONTACT-02, CONTACT-03, CONTACT-04, CONTACT-05
+**Requirements covered:** AGENT-01, AGENT-02, AGENT-03, AGENT-04, AGENT-05, AGENT-06, AGENT-07, AGENT-08, CONTACT-02, CONTACT-03, CONTACT-04, CONTACT-05
 
 **Success Criteria** (what must be TRUE):
 1. A transcript like "read my messages" resolves via fast-path regex in under 1ms and returns a spoken response without invoking the LLM
@@ -107,7 +107,7 @@ Plans:
 
 **Depends on:** Phase 3 (agent layer must produce spoken text before TTS can consume it; contact resolution must work for read-aloud flows)
 
-**Requirements covered:** VOICE-01, VOICE-02, VOICE-03, VOICE-04, VOICE-05, CRON-01, CRON-02, CRON-03, CRON-04
+**Requirements covered:** VOICE-01, VOICE-02, VOICE-03, VOICE-04, VOICE-05, CRON-01, CRON-02, CRON-03, CRON-04, CONTACT-01
 
 **Success Criteria** (what must be TRUE):
 1. `POST /api/voice/command` with a real audio blob returns a spoken response and the first audio chunk arrives at the WebSocket client in under 500ms
@@ -120,7 +120,7 @@ Plans:
 
 ### Plans
 1. **ElevenLabs TTS + WebSocket audio push** — ElevenLabs WebSocket streaming module using `eleven_flash_v2_5`; `output_format: 'opus_48000_32'` constant set in client wrapper for WhatsApp voice notes (not default MP3); per-user WebSocket connection Map with `upgradeWebSocket`/`websocket` from `hono/bun`; binary audio frame push; JSON control frames (`audio_start`, `audio_end`); Afrikaans voice selection from user preference; Hono exports both `fetch` and `websocket` together
-2. **Voice command route + STT** — `POST /api/voice/command` accepting `{ userId, transcript, sessionId }` returning `{ spoken, action, requiresConfirmation, pendingAction }`; OpenAI Whisper (`whisper-1`) STT with `language` hint from user profile; full pipeline: STT → fast-path classify → agent → markdown sanitise → TTS → WebSocket push; session state transitions wired throughout; received voice note playback (fetch from WhatsApp Media URL, stream to device)
+2. **Voice command route + STT** — `POST /api/voice/command` accepting `{ userId, transcript, sessionId }` returning `{ spoken, action, requiresConfirmation, pendingAction }`; OpenAI Whisper (`whisper-1`) STT with `language` hint from user profile; full pipeline: STT → fast-path classify → agent → markdown sanitise → TTS → WebSocket push; session state transitions wired throughout; received voice note playback (fetch from WhatsApp Media URL, stream to device); CONTACT-01: when pushInterrupt() delivers TTS audio, unknown-number events trigger spoken digit-by-digit phone reading via formatPhoneForSpeech() — the heartbeat gate already identifies unknown numbers (Phase 2), Phase 4 wires the TTS delivery
 3. **BullMQ cron + morning briefing worker** — `syncUserRoutines()` called at startup reads `routines` table and calls `upsertJobScheduler` for each enabled routine (never `node-cron`); morning briefing worker: parallel fetch of EskomSePush + OpenWeather + overnight `message_log` digest; spoken briefing built in order: greeting → load shedding → weather → digest (priority contacts first); double-fire protection via `last_run` check; evening digest and custom reminder slots wired
 
 **Verification:** Record a voice note saying "what is the weather today", send to `POST /api/voice/command`, confirm spoken audio plays via WebSocket within 500ms; inspect ElevenLabs request to confirm model is `eleven_flash_v2_5` and OGG/Opus format is set; trigger morning briefing manually via BullMQ, confirm load shedding appears before weather in spoken output; trigger the same job twice within 55 seconds, confirm second run is skipped.
@@ -201,7 +201,7 @@ Plans:
 | AGENT-06 | Phase 3 | Pending |
 | AGENT-07 | Phase 3 | Pending |
 | AGENT-08 | Phase 3 | Pending |
-| CONTACT-01 | Phase 3 | Pending |
+| CONTACT-01 | Phase 4 | Pending |
 | CONTACT-02 | Phase 3 | Pending |
 | CONTACT-03 | Phase 3 | Pending |
 | CONTACT-04 | Phase 3 | Pending |
