@@ -25,6 +25,13 @@ A visually impaired South African can independently send and receive WhatsApp me
 - Contact name resolution via `.ilike('name', name)` — case-insensitive, no RPC dependency (CONTACT-02 through CONTACT-05)
 - Claude orchestrator with manual tool-use agentic loop — `POST /api/voice/command` wired (AGENT-01, AGENT-02)
 
+**Validated in Phase 06: Auth + Contacts Overhaul**
+- Real two-step Supabase email OTP (caregiver) + Twilio SMS OTP (VI user) auth gate — localStorage auth removed (AUTH-01 through AUTH-05)
+- caregivers + caregiver_links tables with RLS policies granting caregiver access to all VI-user tables via join (AUTH-01, AUTH-02)
+- Auth.tsx two-step wizard, App.tsx auth guard with initAuth session rehydration, Login.tsx deleted (AUTH-03, AUTH-04)
+- Setup.tsx Section B: manual contact entry, native Contact Picker API + CSV import, deletable contact list (CONTACTS-01, CONTACTS-02)
+- Phase 06 complete — all 7 milestone phases executed
+
 **Validated in Phase 05.1: Twilio WhatsApp Migration**
 - Inbound WhatsApp path migrated from Meta Cloud API to Twilio format — TWILIO_ACCOUNT_SID/AUTH_TOKEN/WHATSAPP_NUMBER in env (WA-01 updated)
 - verifyTwilioSignature: HMAC-SHA256 over URL + sorted params, base64, timingSafeEqual (WA-02 updated)
@@ -82,7 +89,7 @@ A visually impaired South African can independently send and receive WhatsApp me
 - **Hackathon build:** Target 6–7 hours for a complete working demo. Build order: Supabase schema → backend skeleton → webhook → agent tools → heartbeat engine → cron → voice command route → tests → frontend → demo polish.
 - **South African context:** Load shedding is a daily reality. EskomSePush API provides per-area schedules. Morning briefing must lead with load shedding times.
 - **Twilio WhatsApp constraint (Phase 05.1+):** Migrated from Meta Cloud API to Twilio. Inbound uses form-encoded POST with X-Twilio-Signature. No GET hub-verification step. Outbound was already Twilio (unchanged).
-- **Identity anchor:** WhatsApp phone number (E.164 format) is the user identity — no separate auth system. Backend operates as Supabase `service_role`.
+- **Identity anchor (updated Phase 06):** Dual identity — caregiver authenticates via Supabase email OTP, VI user linked via Twilio SMS OTP. Backend still uses Supabase `service_role` for data access but caregiver sessions are real Supabase Auth sessions.
 - **Contact model:** The `user_contacts` table is entirely this product's construct. WhatsApp Business API provides sender phone but not device contacts. Contacts are added only via voice flows.
 - **Agent SDK:** Claude Agents SDK (`@anthropic-ai/sdk`) with orchestrator + sub-agents pattern. Fast-path regex intent classification before LLM invocation to keep latency under 500ms for common commands.
 - **TTS language:** ElevenLabs for English and Afrikaans in v0.1. Agent responses must be spoken-first — no markdown, no lists, no formatting.
