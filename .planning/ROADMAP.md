@@ -146,10 +146,10 @@ Plans:
 
 **UI hint**: yes
 
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
-- [ ] 05-01-PLAN.md — Test suite: fix 13 failing tests + add messageLog.test.ts (85+ passing, 0 failing)
+- [x] 05-01-PLAN.md — Test suite: fix 13 failing tests + add messageLog.test.ts (85+ passing, 0 failing)
 - [ ] 05-02-PLAN.md — Episodic memory: embed.ts + store.ts + recall.ts + orchestrator injection
 - [ ] 05-03-PLAN.md — Caregiver dashboard: Vite + React 18, 7 pages, SSE, terminal aesthetic
 - [ ] 05-04-PLAN.md — Demo polish + pre-demo checklist (wave 2)
@@ -167,7 +167,7 @@ Plans:
 | 2. Webhook + Heartbeat | 1/3 | In Progress|  |
 | 3. Agent Intelligence | 4/6 | In Progress|  |
 | 4. Voice Pipeline + Cron | 1/3 | In Progress|  |
-| 5. Tests + Frontend + Demo | 0/4 | Not started | - |
+| 5. Tests + Frontend + Demo | 1/4 | In Progress|  |
 
 ---
 

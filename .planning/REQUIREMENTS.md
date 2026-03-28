@@ -75,7 +75,7 @@
 
 ### Test Suite
 
-- [ ] **TEST-01**: `bun test` passes 85+ test cases across 11 suites: quiet hours, phone normalisation, HMAC verification, heartbeat gate, intent classification, session state machine, cron validation, message log helpers, morning briefing builder, contact save flow, WhatsApp payload parsing
+- [x] **TEST-01**: `bun test` passes 85+ test cases across 11 suites: quiet hours, phone normalisation, HMAC verification, heartbeat gate, intent classification, session state machine, cron validation, message log helpers, morning briefing builder, contact save flow, WhatsApp payload parsing
 
 ### Frontend (Caregiver Dashboard — P1)
 
@@ -133,7 +133,7 @@
 | CONTACT-01              | Phase 4 | Complete |
 | CRON-01 – CRON-04 | Phase 4 | Pending |
 | ISO-01 – ISO-03 | Phase 1 | Pending |
-| TEST-01 | Phase 5 | Pending |
+| TEST-01 | Phase 5 | Complete |
 | FE-01 – FE-08 | Phase 5 | Pending |
 | MEM-01 – MEM-03 | Phase 5 | Pending |
 
