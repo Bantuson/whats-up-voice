@@ -3,8 +3,14 @@
 // All routes here are protected by Bearer auth middleware in server.ts (mounted at /api).
 // Fast-path intents bypass the LLM entirely (< 1ms). Slow-path routes to Claude orchestrator.
 import { Hono } from 'hono'
+import { streamSSE } from 'hono/streaming'
+import { EventEmitter } from 'node:events'
 import { toFile } from 'openai'
 import OpenAI from 'openai'
+
+// Singleton emitters — heartbeat worker emits here; SSE streams consume
+export const heartbeatEmitter = new EventEmitter()
+export const agentStateEmitter = new EventEmitter()
 import { classifyIntent } from '../agent/classifier'
 import { runOrchestrator } from '../agent/orchestrator'
 import { toolReadMessages } from '../tools/whatsapp'
@@ -15,6 +21,47 @@ import { spokenError } from '../lib/errors'
 import { streamSpeech } from '../tts/elevenlabs'
 
 export const apiRouter = new Hono()
+
+// ---------------------------------------------------------------------------
+// GET /api/sse/heartbeat — live heartbeat decision feed (FE-04)
+// Bearer token passed as ?token= query param (EventSource does not support headers)
+// ---------------------------------------------------------------------------
+apiRouter.get('/sse/heartbeat', (c) => {
+  return streamSSE(c, async (stream) => {
+    const listener = (event: unknown) => {
+      stream.writeSSE({ event: 'heartbeat', data: JSON.stringify(event) }).catch(() => {})
+    }
+    heartbeatEmitter.on('decision', listener)
+    try {
+      while (true) {
+        await stream.sleep(30_000)
+        await stream.writeSSE({ event: 'ping', data: 'keep-alive' })
+      }
+    } finally {
+      heartbeatEmitter.off('decision', listener)
+    }
+  })
+})
+
+// ---------------------------------------------------------------------------
+// GET /api/sse/agent-state — live session phase updates (FE-03)
+// ---------------------------------------------------------------------------
+apiRouter.get('/sse/agent-state', (c) => {
+  return streamSSE(c, async (stream) => {
+    const listener = (event: unknown) => {
+      stream.writeSSE({ event: 'agent-state', data: JSON.stringify(event) }).catch(() => {})
+    }
+    agentStateEmitter.on('phase', listener)
+    try {
+      while (true) {
+        await stream.sleep(30_000)
+        await stream.writeSSE({ event: 'ping', data: 'keep-alive' })
+      }
+    } finally {
+      agentStateEmitter.off('phase', listener)
+    }
+  })
+})
 
 // Lazy OpenAI singleton — same pattern as ambient.ts
 let _openai: OpenAI | null = null

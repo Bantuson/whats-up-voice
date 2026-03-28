@@ -79,14 +79,14 @@
 
 ### Frontend (Caregiver Dashboard — P1)
 
-- [ ] **FE-01**: Login page: phone number entry sets userId context
-- [ ] **FE-02**: Setup page: language, location, quiet hours, morning briefing toggle
-- [ ] **FE-03**: Dashboard: live agent state panel, 24-bar audio waveform SVG (active when `listening`/`playing`), voice command simulator (text input → backend)
-- [ ] **FE-04**: Heartbeat feed: live log with colour coding (`interrupt` = green, `batch` = amber, `skip` = red)
-- [ ] **FE-05**: Contacts page: address book management, priority toggle, manual add
-- [ ] **FE-06**: Routines page: cron routine management with human-readable labels
-- [ ] **FE-07**: Log page: message history, heartbeat audit, memory schema viewer
-- [ ] **FE-08**: Design: dark `#0D0D0D` background, terminal green `#00FF88` accents, IBM Plex Mono for data, IBM Plex Sans for prose
+- [x] **FE-01**: Login page: phone number entry sets userId context
+- [x] **FE-02**: Setup page: language, location, quiet hours, morning briefing toggle
+- [x] **FE-03**: Dashboard: live agent state panel, 24-bar audio waveform SVG (active when `listening`/`playing`), voice command simulator (text input → backend)
+- [x] **FE-04**: Heartbeat feed: live log with colour coding (`interrupt` = green, `batch` = amber, `skip` = red)
+- [x] **FE-05**: Contacts page: address book management, priority toggle, manual add
+- [x] **FE-06**: Routines page: cron routine management with human-readable labels
+- [x] **FE-07**: Log page: message history, heartbeat audit, memory schema viewer
+- [x] **FE-08**: Design: dark `#0D0D0D` background, terminal green `#00FF88` accents, IBM Plex Mono for data, IBM Plex Sans for prose
 
 ### Episodic Memory (P1)
 
