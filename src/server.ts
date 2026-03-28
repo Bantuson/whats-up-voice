@@ -20,7 +20,7 @@ import { bearerAuth } from 'hono/bearer-auth'
 import { healthRouter } from './routes/health'
 import { webhookRouter } from './routes/webhook'
 import { apiRouter } from './routes/api'
-import { wsConnections } from './ws/manager'
+import { registerConnection, removeConnection } from './ws/connections'
 import './queue/worker'  // boots heartbeat worker at startup
 
 const app = new Hono()
@@ -50,17 +50,17 @@ app.route('/webhook', webhookRouter)
 app.route('/api', apiRouter)
 
 // STEP 5: WebSocket upgrade — ISO-03: scoped per userId, no cross-user delivery
-// Each connection stored in wsConnections Map by userId.
-// Phase 4 uses wsConnections to push audio frames to the correct device.
+// Each connection stored in connections Map by userId via registerConnection.
+// Use pushInterrupt(userId, text) from ./ws/connections to push audio frames to the correct device.
 app.get('/ws/session/:userId', upgradeWebSocket((c) => {
   const userId = c.req.param('userId')
   return {
     onOpen(_event, ws) {
-      wsConnections.set(userId, ws)
+      registerConnection(userId, ws)
       console.log(`[WS] Connected: ${userId}`)
     },
     onClose() {
-      wsConnections.delete(userId)
+      removeConnection(userId)
       console.log(`[WS] Disconnected: ${userId}`)
     },
     onMessage(event) {
