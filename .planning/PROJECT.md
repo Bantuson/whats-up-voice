@@ -25,6 +25,14 @@ A visually impaired South African can independently send and receive WhatsApp me
 - Contact name resolution via `.ilike('name', name)` — case-insensitive, no RPC dependency (CONTACT-02 through CONTACT-05)
 - Claude orchestrator with manual tool-use agentic loop — `POST /api/voice/command` wired (AGENT-01, AGENT-02)
 
+**Validated in Phase 05.1: Twilio WhatsApp Migration**
+- Inbound WhatsApp path migrated from Meta Cloud API to Twilio format — TWILIO_ACCOUNT_SID/AUTH_TOKEN/WHATSAPP_NUMBER in env (WA-01 updated)
+- verifyTwilioSignature: HMAC-SHA256 over URL + sorted params, base64, timingSafeEqual (WA-02 updated)
+- POST /webhook/whatsapp parses form-encoded body, strips whatsapp: prefix, uses MessageSid as dedup key (WA-03, WA-04, WA-05)
+- GET hub-verification handler removed — Twilio uses POST only
+- HeartbeatJobData.messageSid (renamed from waMessageId)
+- 201 tests pass, 0 fail after migration
+
 **Validated in Phase 4: Voice Pipeline + Cron**
 - ElevenLabs TTS streaming wrapper — `eleven_flash_v2_5` (EN) / `eleven_multilingual_v2` (AF), `opus_48000_32` format, audio_start/audio_end framing (VOICE-03, VOICE-04)
 - Per-user WebSocket registry with `pushInterrupt` as sole audio delivery entry point (VOICE-04)
@@ -73,7 +81,7 @@ A visually impaired South African can independently send and receive WhatsApp me
 
 - **Hackathon build:** Target 6–7 hours for a complete working demo. Build order: Supabase schema → backend skeleton → webhook → agent tools → heartbeat engine → cron → voice command route → tests → frontend → demo polish.
 - **South African context:** Load shedding is a daily reality. EskomSePush API provides per-area schedules. Morning briefing must lead with load shedding times.
-- **WhatsApp Cloud API constraint:** Server-side webhook only — no native app-level message interception. All messages pass through the backend.
+- **Twilio WhatsApp constraint (Phase 05.1+):** Migrated from Meta Cloud API to Twilio. Inbound uses form-encoded POST with X-Twilio-Signature. No GET hub-verification step. Outbound was already Twilio (unchanged).
 - **Identity anchor:** WhatsApp phone number (E.164 format) is the user identity — no separate auth system. Backend operates as Supabase `service_role`.
 - **Contact model:** The `user_contacts` table is entirely this product's construct. WhatsApp Business API provides sender phone but not device contacts. Contacts are added only via voice flows.
 - **Agent SDK:** Claude Agents SDK (`@anthropic-ai/sdk`) with orchestrator + sub-agents pattern. Fast-path regex intent classification before LLM invocation to keep latency under 500ms for common commands.
