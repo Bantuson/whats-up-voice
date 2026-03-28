@@ -134,6 +134,17 @@ None - no external service configuration required by this plan. The webhook endp
 - `HeartbeatJobData` interface is the contract between webhook and heartbeat queue — locked
 - Webhook handler returns 200 in all paths within expected latency window
 
+## Self-Check: PASSED
+
+- src/lib/hmac.ts: FOUND
+- src/routes/webhook.ts: FOUND
+- src/queue/heartbeat.ts: FOUND
+- tests/webhook.test.ts: FOUND
+- 02-01-SUMMARY.md: FOUND
+- Commit 3cba2b2: FOUND (GET hub verification)
+- Commit 7f8ac04: FOUND (POST HMAC + message handler)
+- Commit 9f70c78: FOUND (webhook tests)
+
 ---
 *Phase: 02-webhook-heartbeat*
 *Completed: 2026-03-27*
