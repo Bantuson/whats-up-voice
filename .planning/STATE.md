@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-webhook-heartbeat-02-02-PLAN.md
-last_updated: "2026-03-28T08:15:35.617Z"
+stopped_at: Completed 03-agent-intelligence-03-02-PLAN.md
+last_updated: "2026-03-28T08:45:04.090Z"
 progress:
   total_phases: 5
-  completed_phases: 2
-  total_plans: 9
-  completed_plans: 6
+  completed_phases: 1
+  total_plans: 6
+  completed_plans: 8
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 
 **Core value:** A visually impaired South African can independently send and receive WhatsApp messages entirely by voice, with full contact name resolution and a confirmation loop before sending.
 
-**Current focus:** Phase 03 — agent-intelligence
+**Current focus:** Phase 02 — webhook-heartbeat
 
 ---
 
 ## Current Position
 
-Phase: 03 (agent-intelligence) — EXECUTING
-Plan: 1 of 3
+Phase: 02 (webhook-heartbeat) — EXECUTING
+Plan: 3 of 3
 | Field | Value |
 |-------|-------|
 | Phase | 1 — Foundation |
@@ -90,6 +90,9 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - [02-03] pushInterrupt() signature locked: async (userId, spoken) => void — Phase 4 body replacement is drop-in TTS swap
 - [02-03] batch decision = log to heartbeat_log only in Phase 2 — in-memory digest wired in Phase 4 morning briefing worker
 - [02-03] supabase .single() on user_contacts returns data=null for PGRST116 — gate treats null as unknown number without re-throwing
+- [03-02] Lazy Anthropic singleton (_anthropic = null, getAnthropic() factory) — Bun 1.3.x mock.module hoisting requires lazy instantiation so test mocks intercept before first client creation
+- [03-02] Only @anthropic-ai/sdk mocked in orchestrator tests — tool module mocks cause cross-file contamination in Bun 1.3.x single-process test runner
+- [03-02] ALL_TOOLS has 10 entries — plan description said 9 tools but behavior spec lists 10 names; count confirmed correct
 
 ### Critical Build Order Rules
 
@@ -135,13 +138,15 @@ None currently.
 ---
 | Phase 01 P02 | 13 | 3 tasks | 11 files |
 | Phase 02-webhook-heartbeat P02 | 2min | 2 tasks | 4 files |
+| Phase 03-agent-intelligence P03-01 | 10min | 3 tasks | 10 files |
+| Phase 03-agent-intelligence P02 | 13min | 1 tasks | 2 files |
 
 ## Session Continuity
 
 **To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — Plans 01-01 (schema) and 01-02 (server skeleton) are complete. Next: Plan 01-03 (session state machine + intent classifier).
 
-**Last session:** 2026-03-27T22:00:00.680Z
-**Stopped at:** Completed 02-webhook-heartbeat-02-02-PLAN.md
+**Last session:** 2026-03-28T08:45:04.075Z
+**Stopped at:** Completed 03-agent-intelligence-03-02-PLAN.md
 
 **Context for next session:**
 

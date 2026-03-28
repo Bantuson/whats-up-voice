@@ -88,11 +88,11 @@
 4. Ambient queries (load shedding, weather, web search) return a spoken response in under 3 seconds with no markdown characters in the output string
 5. A contact name save flow completes in multi-turn: agent asks for name, user confirms, contact is inserted to `user_contacts`; phone numbers are always read as digit-spaced format, never raw digits
 
-**Plans:** 3 plans
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 03-01-PLAN.md — Sanitiser + tool handlers (sanitiseForSpeech, WhatsApp/contacts/ambient tools, TDD)
-- [ ] 03-02-PLAN.md — Claude orchestrator with manual tool-use loop and ALL_TOOLS definitions (TDD)
+- [x] 03-02-PLAN.md — Claude orchestrator with manual tool-use loop and ALL_TOOLS definitions (TDD)
 - [ ] 03-03-PLAN.md — Wire POST /api/voice/command + env vars + approval loop integration
 
 **Verification:** Send transcript "send a message to Naledi, tell her I'll be late"; confirm session enters `awaiting_approval`; say "yes", confirm `message_log` gets a direction=`out` row; query agent with "load shedding today", confirm spoken response arrives in under 3 seconds with no markdown; run `bun test` intent classification and contact save flow suites.
@@ -163,7 +163,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/3 | Not started | - |
 | 2. Webhook + Heartbeat | 1/3 | In Progress|  |
-| 3. Agent Intelligence | 0/3 | Planned | - |
+| 3. Agent Intelligence | 2/3 | In Progress|  |
 | 4. Voice Pipeline + Cron | 0/3 | Not started | - |
 | 5. Tests + Frontend + Demo | 0/4 | Not started | - |
 
