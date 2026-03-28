@@ -8,6 +8,7 @@ import { sanitiseForSpeech } from './sanitiser'
 import { toolReadMessages, toolSendMessage, toolResolveContact } from '../tools/whatsapp'
 import { toolGetContact, toolSaveContact, toolListContacts, toolSetPriority } from '../tools/contacts'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
+import { recallMemories } from '../memory/recall'
 
 // Lazy singleton — created on first use so tests can mock '@anthropic-ai/sdk' before first call.
 let _anthropic: Anthropic | null = null
@@ -161,6 +162,18 @@ export async function runOrchestrator(
   transcript: string,
   signal: AbortSignal,
 ): Promise<string> {
+  // MEM-03: Recall top-5 relevant memories and inject into system prompt.
+  let systemPrompt = ORCHESTRATOR_SYSTEM_PROMPT
+  try {
+    const memories = await recallMemories(userId, transcript)
+    if (memories.length > 0) {
+      const memoryBlock = memories.map((m) => `- ${m.content}`).join('\n')
+      systemPrompt = `${ORCHESTRATOR_SYSTEM_PROMPT}\n\nRelevant memories from past sessions:\n${memoryBlock}`
+    }
+  } catch {
+    // Memory recall failure is non-fatal — continue without context
+  }
+
   const messages: MessageParam[] = [{ role: 'user', content: transcript }]
   let toolCallCount = 0
 
@@ -169,7 +182,7 @@ export async function runOrchestrator(
       {
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
-        system: ORCHESTRATOR_SYSTEM_PROMPT,
+        system: systemPrompt,
         tools: ALL_TOOLS,
         messages,
       },
