@@ -16,7 +16,6 @@ import { supabase } from '../db/client'
 import { getPhase } from '../session/machine'
 import { formatPhoneForSpeech } from '../lib/phone'
 import { isQuietHours, parseTimeHour } from '../lib/quietHours'
-import { wsConnections } from '../ws/manager'
 
 export async function processHeartbeat(job: { data: HeartbeatJobData }): Promise<void> {
   const { userId, messageLogId, phone, messageBody, mediaType } = job.data
@@ -126,18 +125,13 @@ async function logDecision(
 }
 
 /**
- * Push spoken text to the user's active WebSocket connection.
- * HB-03: interrupt path only.
- * Phase 2 stub — sends a JSON text frame. Phase 4 replaces this with TTS audio.
- * If no WebSocket is connected (user offline), logs only — does not throw.
+ * Push spoken text to the user via TTS + WebSocket audio stream.
+ * Replaced in Phase 4 — calls streamSpeech via connections.pushInterrupt.
+ * If no WebSocket is connected, logs only — does not throw.
  */
 async function pushInterrupt(userId: string, spoken: string): Promise<void> {
-  const ws = wsConnections.get(userId)
-  if (!ws) {
-    console.log(`[Worker] Interrupt for ${userId} — no active WebSocket, logged only`)
-    return
-  }
-  ws.send(JSON.stringify({ type: 'interrupt', spoken }))
+  const { pushInterrupt: deliver } = await import('../ws/connections')
+  await deliver(userId, spoken)
   console.log(`[Worker] Interrupt pushed to ${userId}: ${spoken.slice(0, 60)}`)
 }
 
