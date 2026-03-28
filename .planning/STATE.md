@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: unknown
-stopped_at: Checkpoint 05-04 Task 2 — human-verify frontend and demo rehearsal
-last_updated: "2026-03-28T13:37:41.456Z"
+stopped_at: Completed 05.1-01-PLAN.md — Twilio inbound migration
+last_updated: "2026-03-28T14:46:01.919Z"
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 5
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 21
+  completed_plans: 20
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 
 **Core value:** A visually impaired South African can independently send and receive WhatsApp messages entirely by voice, with full contact name resolution and a confirmation loop before sending.
 
-**Current focus:** Phase 03 — agent-intelligence
+**Current focus:** Phase 05.1 — twilio-whatsapp-migration
 
 ---
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
+Phase: 05.1 (twilio-whatsapp-migration) — EXECUTING
+Plan: 2 of 2
 | Field | Value |
 |-------|-------|
 | Phase | 1 — Foundation |
@@ -93,6 +93,9 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - [03-02] Lazy Anthropic singleton (_anthropic = null, getAnthropic() factory) — Bun 1.3.x mock.module hoisting requires lazy instantiation so test mocks intercept before first client creation
 - [03-02] Only @anthropic-ai/sdk mocked in orchestrator tests — tool module mocks cause cross-file contamination in Bun 1.3.x single-process test runner
 - [03-02] ALL_TOOLS has 10 entries — plan description said 9 tools but behavior spec lists 10 names; count confirmed correct
+- [05.1-01] verifyTwilioSignature implemented manually with node:crypto — no twilio SDK needed for inbound webhook verification
+- [05.1-01] GET /webhook/whatsapp removed entirely — Twilio uses POST-only webhook, no hub-verification step exists
+- [05.1-01] wa_message_id Supabase column name retained unchanged — stores Twilio MessageSid now; only TypeScript variable renamed to messageSid
 
 ### Critical Build Order Rules
 
@@ -108,6 +111,10 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - EskomSePush area ID for demo user? (Hardcode Johannesburg as fallback)
 - Redis hosting? (Decide between Upstash free tier or Railway before Phase 2)
 - WhatsApp WABA Business Verification complete? (Check before demo day)
+
+### Roadmap Evolution
+
+- Phase 05.1 inserted after Phase 05: Twilio WhatsApp migration — replace Meta/WhatsApp Business API with Twilio SDK (URGENT)
 
 ### Blockers
 
@@ -144,13 +151,14 @@ None currently.
 | Phase 04-voice-pipeline-cron P04-03 | 12min | 4 tasks | 6 files |
 | Phase 05-tests-frontend-demo P03 | 10min | 3 tasks | 16 files |
 | Phase 05-tests-frontend-demo P04 | 10min | 1 tasks | 1 files |
+| Phase 05.1 P01 | 2min | 4 tasks | 4 files |
 
 ## Session Continuity
 
 **To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — Plans 01-01 (schema) and 01-02 (server skeleton) are complete. Next: Plan 01-03 (session state machine + intent classifier).
 
-**Last session:** 2026-03-28T13:37:41.439Z
-**Stopped at:** Checkpoint 05-04 Task 2 — human-verify frontend and demo rehearsal
+**Last session:** 2026-03-28T14:46:01.903Z
+**Stopped at:** Completed 05.1-01-PLAN.md — Twilio inbound migration
 
 **Context for next session:**
 
