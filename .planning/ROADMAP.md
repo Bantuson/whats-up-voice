@@ -12,7 +12,7 @@
 
 - [ ] **Phase 1: Foundation** — Supabase schema, RLS policies, Hono server skeleton, session state machine, env validation
 - [x] **Phase 2: Webhook + Heartbeat** — WhatsApp message ingestion, HMAC verification, BullMQ queue, surface decision gate
-- [ ] **Phase 3: Agent Intelligence** — Claude orchestrator + sub-agents, intent classification, contact management flows
+- [x] **Phase 3: Agent Intelligence** — Claude orchestrator + sub-agents, intent classification, contact management flows (completed 2026-03-28)
 - [ ] **Phase 4: Voice Pipeline + Cron** — Full audio round-trip (STT → TTS → WebSocket), morning briefing scheduler
 - [ ] **Phase 5: Tests + Frontend + Demo** — 85+ test cases, caregiver dashboard, episodic memory, demo polish
 
@@ -88,12 +88,12 @@
 4. Ambient queries (load shedding, weather, web search) return a spoken response in under 3 seconds with no markdown characters in the output string
 5. A contact name save flow completes in multi-turn: agent asks for name, user confirms, contact is inserted to `user_contacts`; phone numbers are always read as digit-spaced format, never raw digits
 
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 03-01-PLAN.md — Sanitiser + tool handlers (sanitiseForSpeech, WhatsApp/contacts/ambient tools, TDD)
 - [x] 03-02-PLAN.md — Claude orchestrator with manual tool-use loop and ALL_TOOLS definitions (TDD)
-- [ ] 03-03-PLAN.md — Wire POST /api/voice/command + env vars + approval loop integration
+- [x] 03-03-PLAN.md — Wire POST /api/voice/command + env vars + approval loop integration
 
 **Verification:** Send transcript "send a message to Naledi, tell her I'll be late"; confirm session enters `awaiting_approval`; say "yes", confirm `message_log` gets a direction=`out` row; query agent with "load shedding today", confirm spoken response arrives in under 3 seconds with no markdown; run `bun test` intent classification and contact save flow suites.
 
@@ -163,7 +163,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/3 | Not started | - |
 | 2. Webhook + Heartbeat | 1/3 | In Progress|  |
-| 3. Agent Intelligence | 2/3 | In Progress|  |
+| 3. Agent Intelligence | 3/3 | Complete   | 2026-03-28 |
 | 4. Voice Pipeline + Cron | 0/3 | Not started | - |
 | 5. Tests + Frontend + Demo | 0/4 | Not started | - |
 
