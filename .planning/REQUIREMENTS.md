@@ -35,10 +35,10 @@
 
 ### AI Agent System
 
-- [ ] **AGENT-01**: Orchestrator receives STT transcript, classifies intent via fast-path regex before invoking LLM
-- [ ] **AGENT-02**: Intent classification covers: `send_message`, `read_messages`, `save_contact`, `set_priority`, `load_shedding`, `weather`, `web_search`, `message_digest`
-- [ ] **AGENT-03**: Messaging sub-agent resolves contact by name (e.g. "wife" → Naledi) via `user_contacts` lookup
-- [ ] **AGENT-04**: Messaging sub-agent drafts outbound message and enters `awaiting_approval` state with TTS read-back
+- [x] **AGENT-01**: Orchestrator receives STT transcript, classifies intent via fast-path regex before invoking LLM
+- [x] **AGENT-02**: Intent classification covers: `send_message`, `read_messages`, `save_contact`, `set_priority`, `load_shedding`, `weather`, `web_search`, `message_digest`
+- [x] **AGENT-03**: Messaging sub-agent resolves contact by name (e.g. "wife" → Naledi) via `user_contacts` lookup
+- [x] **AGENT-04**: Messaging sub-agent drafts outbound message and enters `awaiting_approval` state with TTS read-back
 - [ ] **AGENT-05**: User can confirm ("yes/send") or cancel ("no/cancel") pending message — state returns to `idle`
 - [x] **AGENT-06**: Ambient sub-agent handles load shedding (EskomSePush), weather (OpenWeather), web search (Tavily) — target latency under 3 seconds
 - [x] **AGENT-07**: All agent spoken responses are plain conversational text — no markdown, no bullet points, one question at a time
