@@ -91,7 +91,7 @@
 **Plans:** 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Sanitiser + tool handlers (sanitiseForSpeech, WhatsApp/contacts/ambient tools, TDD)
+- [x] 03-01-PLAN.md — Sanitiser + tool handlers (sanitiseForSpeech, WhatsApp/contacts/ambient tools, TDD)
 - [ ] 03-02-PLAN.md — Claude orchestrator with manual tool-use loop and ALL_TOOLS definitions (TDD)
 - [ ] 03-03-PLAN.md — Wire POST /api/voice/command + env vars + approval loop integration
 
