@@ -288,7 +288,7 @@ Plans:
 
 **Requirements covered:** AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, CONTACTS-01, CONTACTS-02
 
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 06-01-PLAN.md — Supabase migration 003_caregiver_auth.sql + backend OTP routes (send-otp, verify-otp) + SUPABASE_ANON_KEY env var
