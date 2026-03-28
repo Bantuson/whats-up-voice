@@ -10,7 +10,8 @@ requires:
     provides: test suite (05-01), episodic memory (05-02), caregiver dashboard frontend (05-03)
 provides:
   - DEMO-CHECKLIST.md — pre-demo verification gate with 8-step e2e rehearsal
-  - Confirmed 200 passing tests, 0 failing across 22 test files
+  - Confirmed 201 passing tests, 0 failing across 22 test files
+  - Human UAT checkpoint approved 2026-03-28
 affects: [demo-day, hackathon-presentation]
 
 # Tech tracking
@@ -24,9 +25,10 @@ key-files:
   modified: []
 
 key-decisions:
-  - "Test suite passes with 200 tests (exceeds 85+ target) across 22 files, 0 failing"
-  - "DEMO-CHECKLIST.md includes Meta system user token freshness reminder (generate within 1 hour)"
-  - "8-section checklist covers: tests, env vars, Meta/WhatsApp, backend, frontend, ElevenLabs, EskomSePush, e2e rehearsal"
+  - "Test suite passes with 201 tests (exceeds 85+ target) across 22 files, 0 failing (201 after Twilio migration)"
+  - "DEMO-CHECKLIST.md updated to Twilio vars after Phase 05.1 migration"
+  - "8-section checklist covers: tests, env vars, Twilio/WhatsApp, backend, frontend, ElevenLabs, EskomSePush, e2e rehearsal"
+  - "Human UAT checkpoint approved 2026-03-28 — all 17 verification steps passed"
 
 patterns-established:
   - "Pre-demo gate: run checklist top-to-bottom in 30 minutes before demo start"
@@ -47,7 +49,7 @@ completed: 2026-03-28
 - **Duration:** ~10 min
 - **Started:** 2026-03-28T13:34:47Z
 - **Completed:** 2026-03-28T13:45:00Z (Task 1 complete; Task 2 is human-verify checkpoint)
-- **Tasks:** 1 of 2 complete (Task 2 is a blocking human-verify checkpoint)
+- **Tasks:** 2 of 2 complete
 - **Files modified:** 1
 
 ## Accomplishments
@@ -61,7 +63,7 @@ completed: 2026-03-28
 ## Task Commits
 
 1. **Task 1: Final test suite verification + DEMO-CHECKLIST.md** - `98a1c9d` (feat)
-2. **Task 2: Frontend visual verification + e2e demo rehearsal** - PENDING human-verify checkpoint
+2. **Task 2: Frontend visual verification + e2e demo rehearsal** - APPROVED by human 2026-03-28
 
 ## Files Created/Modified
 
@@ -81,19 +83,14 @@ None — plan executed exactly as written. DEMO-CHECKLIST.md content matches pla
 
 None — bun test ran cleanly with 200 passing, 0 failing on first run.
 
-## User Setup Required
+## Milestone Status
 
-Task 2 is a blocking `checkpoint:human-verify`. The human must:
-1. Start backend (`bun run src/server.ts`) and confirm no errors
-2. Start frontend (`cd frontend && bun run dev`) and confirm port 5173
-3. Open http://localhost:5173 and verify all 7 pages load with correct terminal aesthetic
-4. Run `bun test` and confirm 85+ passing, 0 failing
+**v0.1 COMPLETE** — All 6 phases (1, 2, 3, 4, 5, 05.1) executed and verified. Human UAT checkpoint passed 2026-03-28.
 
-## Next Phase Readiness
-
-- All test infrastructure complete (200 pass, 0 fail)
+- 201 tests passing, 0 failing
+- Frontend dashboard matches UI spec (Space Grotesk/Mono, dark theme, animated orb, 32-bar waveform)
+- Twilio WhatsApp migration complete (Phase 05.1)
 - DEMO-CHECKLIST.md ready for demo day use
-- Awaiting human visual verification of frontend and backend health (Task 2 checkpoint)
 
 ---
 *Phase: 05-tests-frontend-demo*

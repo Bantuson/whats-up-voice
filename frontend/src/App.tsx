@@ -1,6 +1,6 @@
 // frontend/src/App.tsx
-// 7-page SPA with fixed left nav sidebar (160px) and React Router hash-based routing.
-// Nav items: LOGIN SETUP DASHBOARD FEED CONTACTS ROUTINES LOG (uppercase per spec)
+// Sidebar: collapsed (48px icons-only) by default, expands to 200px on hover.
+// Design matches root index.html — Space Mono/Grotesk, #0A0A0A bg, #00E87A green.
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom'
 import { Login }         from './pages/Login'
 import { Setup }         from './pages/Setup'
@@ -12,54 +12,67 @@ import { Log }           from './pages/Log'
 import { useAppStore }   from './store/appStore'
 
 const NAV_ITEMS = [
-  { path: '/login',     label: 'LOGIN'    },
-  { path: '/setup',     label: 'SETUP'    },
-  { path: '/dashboard', label: 'DASHBOARD'},
-  { path: '/feed',      label: 'FEED'     },
-  { path: '/contacts',  label: 'CONTACTS' },
-  { path: '/routines',  label: 'ROUTINES' },
-  { path: '/log',       label: 'LOG'      },
+  { path: '/login',     label: 'Login',     icon: '◌' },
+  { path: '/setup',     label: 'Setup',     icon: '◫' },
+  { path: '/dashboard', label: 'Dashboard', icon: '◈' },
+  { path: '/feed',      label: 'Feed',      icon: '◉' },
+  { path: '/contacts',  label: 'Contacts',  icon: '◎' },
+  { path: '/routines',  label: 'Routines',  icon: '◷' },
+  { path: '/log',       label: 'Log',       icon: '◻' },
 ]
 
+const STATE_LABELS: Record<string, string> = {
+  idle:      'Idle',
+  listening: 'Listening',
+  composing: 'Composing',
+  awaiting:  'Awaiting',
+  playing:   'Playing',
+}
+
 export default function App() {
-  const userId = useAppStore((s) => s.userId)
+  const userId      = useAppStore((s) => s.userId)
+  const phase       = useAppStore((s) => s.sessionPhase)
+
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      {/* Nav sidebar — fixed 160px, #1A1A1A bg */}
-      <nav style={{
-        width: 160, minHeight: '100vh', background: 'var(--color-surface)',
-        display: 'flex', flexDirection: 'column', flexShrink: 0,
-      }}>
-        <div style={{ padding: 'var(--space-lg) var(--space-md)', borderBottom: '1px solid var(--color-border)' }}>
-          <span style={{
-            fontFamily: 'var(--font-data)', fontSize: 'var(--size-label)',
-            fontWeight: 'var(--weight-semibold)', color: 'var(--color-accent)',
-          }}>
-            VoiceApp
-          </span>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
+
+      {/* ── SIDEBAR ── */}
+      <aside className="sidebar">
+
+        {/* Logo */}
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-mark">VoiceApp</div>
+          <div className="sidebar-logo-sub">Audio interface</div>
         </div>
-        {NAV_ITEMS.map(({ path, label }) => (
-          <NavLink
-            key={path}
-            to={path}
-            style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center',
-              height: 'var(--touch-target)',
-              padding: '0 var(--space-md)',
-              fontFamily: 'var(--font-prose)',
-              fontSize: 'var(--size-label)',
-              fontWeight: 'var(--weight-semibold)',
-              textDecoration: 'none',
-              letterSpacing: '0.08em',
-              color: isActive ? 'var(--color-accent)' : 'var(--color-text-muted)',
-              borderLeft: isActive ? '2px solid var(--color-accent)' : '2px solid transparent',
-            })}
-          >
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-      {/* Page content */}
+
+        {/* Nav */}
+        <nav className="sidebar-nav">
+          {NAV_ITEMS.map(({ path, label, icon }) => (
+            <NavLink
+              key={path}
+              to={path}
+              className={({ isActive }) => 'sidebar-link' + (isActive ? ' active' : '')}
+            >
+              <span className="sidebar-icon">{icon}</span>
+              <span className="sidebar-label">{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* Agent state panel */}
+        <div className="sidebar-state">
+          <div className="sidebar-state-label">Agent state</div>
+          <div className="sidebar-state-row">
+            <div className={`state-dot ${phase}`} />
+            <span className={`sidebar-state-name ${phase}`}>
+              {STATE_LABELS[phase] ?? phase}
+            </span>
+          </div>
+        </div>
+
+      </aside>
+
+      {/* ── MAIN ── */}
       <main style={{ flex: 1, overflow: 'auto', padding: 'var(--space-xl)' }}>
         <Routes>
           <Route path="/login"     element={<Login />} />
@@ -72,6 +85,7 @@ export default function App() {
           <Route path="*"          element={<Navigate to={userId ? '/dashboard' : '/login'} replace />} />
         </Routes>
       </main>
+
     </div>
   )
 }

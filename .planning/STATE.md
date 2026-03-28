@@ -25,14 +25,14 @@ progress:
 
 **Core value:** A visually impaired South African can independently send and receive WhatsApp messages entirely by voice, with full contact name resolution and a confirmation loop before sending.
 
-**Current focus:** Phase 05.1 — twilio-whatsapp-migration
+**Current focus:** Phase 06 — auth-contacts-overhaul
 
 ---
 
 ## Current Position
 
-Phase: 05.1
-Plan: Not started
+Phase: 06 (auth-contacts-overhaul) — EXECUTING
+Plan: 1 of 4
 | Field | Value |
 |-------|-------|
 | Phase | 1 — Foundation |
