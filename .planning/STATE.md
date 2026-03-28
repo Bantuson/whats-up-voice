@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
-status: unknown
-stopped_at: Completed 02-webhook-heartbeat-02-02-PLAN.md
-last_updated: "2026-03-27T22:00:00.696Z"
+status: phase_complete
+stopped_at: Completed Phase 02 — webhook-heartbeat (11/12 verified, HB-04 deferred to Phase 4)
+last_updated: "2026-03-28T00:10:00.000Z"
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 6
-  completed_plans: 4
-  percent: 0
+  completed_phases: 2
+  total_plans: 9
+  completed_plans: 6
+  percent: 40
 ---
 
 # VoiceApp — Project State
@@ -86,6 +86,10 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - [02-01] verifyWhatsAppHmac requires sha256= prefix — bare hex strings rejected; strict format enforcement (security)
 - [02-01] src/queue/heartbeat.ts stub created with HeartbeatJobData interface — Plan 02-02 overwrites with BullMQ + ioredis
 - [02-01] to_phone stored as +${WHATSAPP_PHONE_NUMBER_ID} in message_log — env var is numeric ID, + prepended at insert time
+- [02-03] isQuietHours() receives currentHour as injected parameter — enables deterministic testing without wall-clock mocking
+- [02-03] pushInterrupt() signature locked: async (userId, spoken) => void — Phase 4 body replacement is drop-in TTS swap
+- [02-03] batch decision = log to heartbeat_log only in Phase 2 — in-memory digest wired in Phase 4 morning briefing worker
+- [02-03] supabase .single() on user_contacts returns data=null for PGRST116 — gate treats null as unknown number without re-throwing
 
 ### Critical Build Order Rules
 

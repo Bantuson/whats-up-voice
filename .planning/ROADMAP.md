@@ -11,7 +11,7 @@
 ## Phases
 
 - [ ] **Phase 1: Foundation** — Supabase schema, RLS policies, Hono server skeleton, session state machine, env validation
-- [ ] **Phase 2: Webhook + Heartbeat** — WhatsApp message ingestion, HMAC verification, BullMQ queue, surface decision gate
+- [x] **Phase 2: Webhook + Heartbeat** — WhatsApp message ingestion, HMAC verification, BullMQ queue, surface decision gate
 - [ ] **Phase 3: Agent Intelligence** — Claude orchestrator + sub-agents, intent classification, contact management flows
 - [ ] **Phase 4: Voice Pipeline + Cron** — Full audio round-trip (STT → TTS → WebSocket), morning briefing scheduler
 - [ ] **Phase 5: Tests + Frontend + Demo** — 85+ test cases, caregiver dashboard, episodic memory, demo polish
