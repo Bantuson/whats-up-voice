@@ -19,6 +19,7 @@
     "@anthropic-ai/sdk": "^0.80.0",
     "@elevenlabs/elevenlabs-js": "^2.40.0",
     "@supabase/supabase-js": "^2.100.1",
+    "@tavily/core": "^0.7.2",
     "bullmq": "^5.71.1",
     "hono": "^4.12.9",
     "ioredis": "^5.10.1",
