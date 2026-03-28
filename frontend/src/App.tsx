@@ -1,8 +1,13 @@
 // frontend/src/App.tsx
 // Sidebar: collapsed (48px icons-only) by default, expands to 200px on hover.
 // Design matches root index.html — Space Mono/Grotesk, #0A0A0A bg, #00E87A green.
+//
+// Auth guard: if !isAuthenticated → redirect to /auth
+// Nav items: DASHBOARD, FEED, CONTACTS, ROUTINES, LOG (LOGIN and SETUP removed)
+// Setup: accessible via gear icon in sidebar footer (post-auth reconfiguration only)
+import { useEffect }         from 'react'
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom'
-import { Login }         from './pages/Login'
+import { Auth }          from './pages/Auth'
 import { Setup }         from './pages/Setup'
 import { Dashboard }     from './pages/Dashboard'
 import { HeartbeatFeed } from './pages/HeartbeatFeed'
@@ -11,9 +16,8 @@ import { Routines }      from './pages/Routines'
 import { Log }           from './pages/Log'
 import { useAppStore }   from './store/appStore'
 
+// 5 core nav items — LOGIN and SETUP removed (per D-01 auth overhaul)
 const NAV_ITEMS = [
-  { path: '/login',     label: 'Login',     icon: '◌' },
-  { path: '/setup',     label: 'Setup',     icon: '◫' },
   { path: '/dashboard', label: 'Dashboard', icon: '◈' },
   { path: '/feed',      label: 'Feed',      icon: '◉' },
   { path: '/contacts',  label: 'Contacts',  icon: '◎' },
@@ -30,9 +34,29 @@ const STATE_LABELS: Record<string, string> = {
 }
 
 export default function App() {
-  const userId      = useAppStore((s) => s.userId)
-  const phase       = useAppStore((s) => s.sessionPhase)
+  const isAuthenticated = useAppStore((s) => s.isAuthenticated)
+  const phase           = useAppStore((s) => s.sessionPhase)
+  const initAuth        = useAppStore((s) => s.initAuth)
+  const signOut         = useAppStore((s) => s.signOut)
 
+  // Rehydrate Supabase session from localStorage on mount
+  useEffect(() => {
+    let cleanup: (() => void) | undefined
+    initAuth().then((fn) => { cleanup = fn })
+    return () => { cleanup?.() }
+  }, [initAuth])
+
+  // Pre-auth: show only the auth page (no sidebar)
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/auth" element={<Auth />} />
+        <Route path="*"    element={<Navigate to="/auth" replace />} />
+      </Routes>
+    )
+  }
+
+  // Post-auth: full dashboard with sidebar
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)' }}>
 
@@ -70,19 +94,39 @@ export default function App() {
           </div>
         </div>
 
+        {/* Sidebar footer: gear icon → /setup, sign-out button */}
+        <div style={{ marginTop: 'auto', padding: 'var(--space-md)', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+          <NavLink
+            to="/setup"
+            title="Settings"
+            className={({ isActive }) => 'sidebar-link' + (isActive ? ' active' : '')}
+            style={{ flex: 1 }}
+          >
+            <span className="sidebar-icon">⚙</span>
+            <span className="sidebar-label">Settings</span>
+          </NavLink>
+          <button
+            onClick={() => signOut()}
+            title="Sign out"
+            style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'var(--font-data)', fontSize: 'var(--size-label)', padding: 'var(--space-sm)' }}
+          >
+            ⏻
+          </button>
+        </div>
+
       </aside>
 
       {/* ── MAIN ── */}
       <main style={{ flex: 1, overflow: 'auto', padding: 'var(--space-xl)' }}>
         <Routes>
-          <Route path="/login"     element={<Login />} />
-          <Route path="/setup"     element={<Setup />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/feed"      element={<HeartbeatFeed />} />
           <Route path="/contacts"  element={<Contacts />} />
           <Route path="/routines"  element={<Routines />} />
           <Route path="/log"       element={<Log />} />
-          <Route path="*"          element={<Navigate to={userId ? '/dashboard' : '/login'} replace />} />
+          <Route path="/setup"     element={<Setup />} />
+          <Route path="/auth"      element={<Navigate to="/dashboard" replace />} />
+          <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </main>
 
