@@ -90,9 +90,9 @@
 
 ### Episodic Memory (P1)
 
-- [ ] **MEM-01**: Interaction summaries written to `memory_store` after each completed session with OpenAI `text-embedding-3-small` embeddings
-- [ ] **MEM-02**: `match_memories` RPC called via `supabase.rpc()` — cosine similarity search over user's memory with `p_threshold = 0.75`
-- [ ] **MEM-03**: Top-5 memory snippets injected into orchestrator system prompt on every invocation
+- [x] **MEM-01**: Interaction summaries written to `memory_store` after each completed session with OpenAI `text-embedding-3-small` embeddings
+- [x] **MEM-02**: `match_memories` RPC called via `supabase.rpc()` — cosine similarity search over user's memory with `p_threshold = 0.75`
+- [x] **MEM-03**: Top-5 memory snippets injected into orchestrator system prompt on every invocation
 
 ---
 

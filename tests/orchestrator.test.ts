@@ -26,6 +26,12 @@ mock.module('@anthropic-ai/sdk', () => ({
   default: MockAnthropicClass,
 }))
 
+// Mock memory recall to return empty array — prevents cross-test contamination from memory.test.ts
+// when bun test runs the full suite (mocks persist in single-process test runner).
+mock.module('../src/memory/recall', () => ({
+  recallMemories: async () => [],
+}))
+
 // ---- Import after mocks ----
 import { runOrchestrator, ALL_TOOLS, ORCHESTRATOR_SYSTEM_PROMPT } from '../src/agent/orchestrator'
 

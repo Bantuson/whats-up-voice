@@ -149,8 +149,8 @@ Plans:
 **Plans:** 1/4 plans executed
 
 Plans:
-- [x] 05-01-PLAN.md — Test suite: fix 13 failing tests + add messageLog.test.ts (85+ passing, 0 failing)
-- [ ] 05-02-PLAN.md — Episodic memory: embed.ts + store.ts + recall.ts + orchestrator injection
+- [ ] 05-01-PLAN.md — Test suite: fix 13 failing tests + add messageLog.test.ts (85+ passing, 0 failing)
+- [x] 05-02-PLAN.md — Episodic memory: embed.ts + store.ts + recall.ts + orchestrator injection
 - [ ] 05-03-PLAN.md — Caregiver dashboard: Vite + React 18, 7 pages, SSE, terminal aesthetic
 - [ ] 05-04-PLAN.md — Demo polish + pre-demo checklist (wave 2)
 **Verification:** `bun test` output shows 85+ passing, 0 failing; open dashboard URL, send a WhatsApp message, confirm heartbeat feed updates within 2 seconds; query agent for a topic discussed in a previous session, confirm memory snippet appears in the system prompt (log output); run full demo script once without intervention.
