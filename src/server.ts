@@ -22,8 +22,35 @@ import { webhookRouter } from './routes/webhook'
 import { apiRouter } from './routes/api'
 import { registerConnection, removeConnection } from './ws/connections'
 import './queue/worker'  // boots heartbeat worker at startup
+import { syncUserRoutines } from './cron/routines'
+import { processMorningBriefing } from './cron/morningBriefing'
+import { Worker as CronWorker } from 'bullmq'
 
 const app = new Hono()
+
+// Register BullMQ cron worker — processes morning_briefing and evening_digest jobs
+const cronWorker = new CronWorker(
+  'cron',
+  async (job) => {
+    if (job.name === 'morning_briefing') {
+      await processMorningBriefing(job as { data: { userId: string } })
+    } else if (job.name === 'evening_digest') {
+      // Evening digest reuses morning briefing logic (same data, different greeting)
+      await processMorningBriefing(job as { data: { userId: string } })
+    }
+    // reminder type jobs: future phases handle custom reminder content
+  },
+  {
+    connection: (await import('./queue/heartbeat')).redis,
+    concurrency: 3,
+  }
+)
+
+cronWorker.on('completed', (job) => console.log(`[Cron Worker] Job completed: ${job.id}`))
+cronWorker.on('failed', (job, err) => console.error(`[Cron Worker] Job failed: ${job?.id}`, err))
+
+// Sync all user routines at startup (idempotent — safe to run on every restart)
+syncUserRoutines().catch((err) => console.error('[Cron] syncUserRoutines failed at startup:', err))
 
 // STEP 1: RAW BODY CAPTURE — must precede all route registration
 // Reads c.req.text() into context so HMAC middleware (Phase 2) can verify

@@ -62,10 +62,10 @@
 
 ### Cron & Morning Briefing
 
-- [ ] **CRON-01**: BullMQ job scheduler polls `routines` table; fires `morning_briefing` at `0 7 * * 1-5` per user
-- [ ] **CRON-02**: Double-fire protection: skip if `last_run` within 55 seconds of current time
-- [ ] **CRON-03**: Morning briefing composition order: greeting → load shedding → weather → overnight message digest (priority contacts first)
-- [ ] **CRON-04**: Evening digest (`0 18 * * *`) and custom reminders supported via `routines` table entries
+- [x] **CRON-01**: BullMQ job scheduler polls `routines` table; fires `morning_briefing` at `0 7 * * 1-5` per user
+- [x] **CRON-02**: Double-fire protection: skip if `last_run` within 55 seconds of current time
+- [x] **CRON-03**: Morning briefing composition order: greeting → load shedding → weather → overnight message digest (priority contacts first)
+- [x] **CRON-04**: Evening digest (`0 18 * * *`) and custom reminders supported via `routines` table entries
 
 ### User Isolation
 
