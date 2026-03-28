@@ -10,10 +10,11 @@
 
 ## Phases
 
-- [ ] **Phase 1: Foundation** — Supabase schema, RLS policies, Hono server skeleton, session state machine, env validation
+- [x] **Phase 1: Foundation** — Supabase schema, RLS policies, Hono server skeleton, session state machine, env validation
 - [x] **Phase 2: Webhook + Heartbeat** — WhatsApp message ingestion, HMAC verification, BullMQ queue, surface decision gate
-- [x] **Phase 3: Agent Intelligence** — Claude orchestrator + sub-agents, intent classification, contact management flows (completed 2026-03-28)
-- [ ] **Phase 4: Voice Pipeline + Cron** — Full audio round-trip (STT → TTS → WebSocket), morning briefing scheduler
+- [x] **Phase 3: Agent Intelligence** — Claude orchestrator + sub-agents, intent classification, contact management flows
+ (completed 2026-03-28)
+- [x] **Phase 4: Voice Pipeline + Cron** — Full audio round-trip (STT → TTS → WebSocket), morning briefing scheduler
 - [ ] **Phase 5: Tests + Frontend + Demo** — 85+ test cases, caregiver dashboard, episodic memory, demo polish
 
 ---
@@ -145,12 +146,13 @@ Plans:
 
 **UI hint**: yes
 
-### Plans
-1. **Test suite — 85+ cases across 11 suites** — `bun test` suites: quiet hours (overnight range), phone normalisation (E.164 edge cases), HMAC verification (valid sig, tampered body, missing header), heartbeat gate (all 6 decision paths), intent classification (all 8 fast-path patterns + fallthrough), session state machine (valid and invalid transitions), cron validation (double-fire protection), message log helpers, morning briefing builder (order assertion), contact save flow (multi-turn), WhatsApp payload parsing (messages vs statuses vs unknown); assert no `*`, `#`, `` ` `` in any agent output
-2. **Episodic memory (pgvector)** — OpenAI `text-embedding-3-small` embeddings on session summaries; insert to `memory_store` after each completed session; `match_memories` RPC called via `supabase.rpc()` with `p_threshold = 0.75`, top-5 results; inject into orchestrator system prompt on every invocation; all queries include `.eq('user_id', userId)`
-3. **Caregiver dashboard (Vite + React 18)** — Dark `#0D0D0D` background, terminal green `#00FF88` accents, IBM Plex Mono for data, IBM Plex Sans for prose; pages: Login (phone number → userId context), Setup (language/location/quiet hours/briefing toggle), Dashboard (live agent state + 24-bar waveform SVG + voice command simulator), Heartbeat feed (SSE from Hono `streamSSE`, colour-coded), Contacts (address book + priority toggle + manual add), Routines (cron management with human-readable labels), Log (message history + heartbeat audit + memory schema viewer); Hono SSE push for read-only live data (no WebSocket needed for dashboard)
-4. **Demo polish + pre-demo checklist** — Fresh Meta system user token generated within 1 hour of demo; WABA tier and 250-message cap verified in Business Manager; all env vars confirmed in demo environment; ElevenLabs voice IDs benchmarked and committed; EskomSePush area ID set for demo location (Johannesburg fallback hardcoded); real message exchange tested at least 24 hours before demo; demo script rehearsed end-to-end
+**Plans:** 4 plans
 
+Plans:
+- [ ] 05-01-PLAN.md — Test suite: fix 13 failing tests + add messageLog.test.ts (85+ passing, 0 failing)
+- [ ] 05-02-PLAN.md — Episodic memory: embed.ts + store.ts + recall.ts + orchestrator injection
+- [ ] 05-03-PLAN.md — Caregiver dashboard: Vite + React 18, 7 pages, SSE, terminal aesthetic
+- [ ] 05-04-PLAN.md — Demo polish + pre-demo checklist (wave 2)
 **Verification:** `bun test` output shows 85+ passing, 0 failing; open dashboard URL, send a WhatsApp message, confirm heartbeat feed updates within 2 seconds; query agent for a topic discussed in a previous session, confirm memory snippet appears in the system prompt (log output); run full demo script once without intervention.
 
 **Dependencies:** Phase 4 complete; Vite + React dev environment configured; all external API keys active and tested.
