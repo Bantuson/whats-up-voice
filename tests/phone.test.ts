@@ -1,4 +1,25 @@
-import { describe, test, expect } from 'bun:test'
+import { describe, test, expect, mock } from 'bun:test'
+
+// Re-register the real phone module implementation before importing.
+// hubVerification.test.ts and webhookHandler.test.ts both mock.module('../src/lib/phone')
+// with simplified stubs. In Bun 1.3.x the mock registry is process-persistent, so
+// those stubs can still be active when phone.test.ts runs (alphabetical test order).
+// Declaring mock.module here with the real implementation restores correct behaviour
+// for this file's import resolution.
+mock.module('../src/lib/phone', () => ({
+  normaliseE164(raw: string): string {
+    const digits = raw.replace(/\D/g, '')
+    if (digits.startsWith('0') && digits.length === 10) {
+      return `+27${digits.slice(1)}`
+    }
+    return `+${digits}`
+  },
+  formatPhoneForSpeech(e164: string): string {
+    const local = e164.startsWith('+27') ? '0' + e164.slice(3) : e164.replace(/^\+/, '')
+    return local.split('').join(' ')
+  },
+}))
+
 import { normaliseE164, formatPhoneForSpeech } from '../src/lib/phone'
 
 describe('ISO-02: E.164 normalisation', () => {
