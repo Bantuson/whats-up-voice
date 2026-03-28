@@ -25,7 +25,6 @@ import './queue/worker'  // boots heartbeat worker at startup
 import { syncUserRoutines } from './cron/routines'
 import { processMorningBriefing } from './cron/morningBriefing'
 import { Worker as CronWorker } from 'bullmq'
-import { cronQueue } from './cron/routines'
 
 const app = new Hono()
 
