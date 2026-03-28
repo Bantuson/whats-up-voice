@@ -1,10 +1,11 @@
 ---
 phase: 5
 slug: tests-frontend-demo
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-03-28
+reviewed_at: 2026-03-28
 ---
 
 # Phase 5 — UI Design Contract
