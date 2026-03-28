@@ -14,6 +14,9 @@ const REQUIRED_ENV_VARS = [
   'SUPABASE_SERVICE_ROLE_KEY',
   'REDIS_URL',
   'API_BEARER_TOKEN',
+  'ESKOMSEPUSH_API_KEY',
+  'OPENWEATHER_API_KEY',
+  'TAVILY_API_KEY',
 ] as const
 
 export function validateEnv(): void {
