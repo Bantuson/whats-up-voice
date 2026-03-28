@@ -88,10 +88,12 @@
 4. Ambient queries (load shedding, weather, web search) return a spoken response in under 3 seconds with no markdown characters in the output string
 5. A contact name save flow completes in multi-turn: agent asks for name, user confirms, contact is inserted to `user_contacts`; phone numbers are always read as digit-spaced format, never raw digits
 
-### Plans
-1. **Claude orchestrator + sub-agents** — `@anthropic-ai/sdk` orchestrator with WhatsApp sub-agent (ReadMessages, SendMessage, ResolveContact tools), Contacts sub-agent (GetContact, SaveContact, ListContacts tools), Ambient sub-agent (GetLoadShedding via EskomSePush, GetWeather via OpenWeather, WebSearch via Tavily); every tool query includes `.eq('user_id', userId)`; AbortController 5-second timeout on every external API call; cap at 10 tool calls per conversation; model `claude-sonnet-4-6`; system prompt enforces spoken-natural prose
-2. **Messaging + contact flows** — Pre-send approval loop wired to session state machine (`composing → awaiting_approval`); yes/cancel regex patterns via fast-path; max 3 no-match resets to `idle`; contact name resolution used in all read-aloud paths; unknown number flow (interrupt + offer to save); proactive contact save by voice (CONTACT-03); priority flag set/unset by voice (CONTACT-04)
-3. **Markdown sanitiser + ambient tools** — Post-processing strip of `**`, `##`, `- ` at line start, backticks applied at agent output boundary before any TTS call; EskomSePush, OpenWeather, Tavily wrappers with AbortController timeouts; assert agent output strings contain none of `*`, `#`, `` ` `` in tests
+**Plans:** 3 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Sanitiser + tool handlers (sanitiseForSpeech, WhatsApp/contacts/ambient tools, TDD)
+- [ ] 03-02-PLAN.md — Claude orchestrator with manual tool-use loop and ALL_TOOLS definitions (TDD)
+- [ ] 03-03-PLAN.md — Wire POST /api/voice/command + env vars + approval loop integration
 
 **Verification:** Send transcript "send a message to Naledi, tell her I'll be late"; confirm session enters `awaiting_approval`; say "yes", confirm `message_log` gets a direction=`out` row; query agent with "load shedding today", confirm spoken response arrives in under 3 seconds with no markdown; run `bun test` intent classification and contact save flow suites.
 
@@ -161,7 +163,7 @@
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/3 | Not started | - |
 | 2. Webhook + Heartbeat | 1/3 | In Progress|  |
-| 3. Agent Intelligence | 0/3 | Not started | - |
+| 3. Agent Intelligence | 0/3 | Planned | - |
 | 4. Voice Pipeline + Cron | 0/3 | Not started | - |
 | 5. Tests + Frontend + Demo | 0/4 | Not started | - |
 
