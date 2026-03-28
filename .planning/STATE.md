@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 05.1-02-PLAN.md — Test suite Twilio migration
-last_updated: "2026-03-28T14:58:54.355Z"
+stopped_at: Completed 06-01-PLAN.md — Caregiver Auth Schema + OTP Backend Routes
+last_updated: "2026-03-28T21:58:10.151Z"
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 21
-  completed_plans: 21
+  total_phases: 7
+  completed_phases: 4
+  total_plans: 20
+  completed_plans: 22
   percent: 0
 ---
 
@@ -98,6 +98,9 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - [05.1-01] wa_message_id Supabase column name retained unchanged — stores Twilio MessageSid now; only TypeScript variable renamed to messageSid
 - [05.1-02] TWILIO_WHATSAPP_NUMBER replaces +${WHATSAPP_PHONE_NUMBER_ID} concatenation in tests — env var stores full E.164 number with + prefix
 - [05.1-02] hubVerification.test.ts reduced from 5 tests to 1 — Twilio uses POST-only, GET route removed; single 404 assertion is correct coverage
+- [06-01] Twilio plain SMS for VI user OTP — works before WhatsApp sandbox join, no whatsapp: prefix
+- [06-01] authRouter mounted at /api/auth under Bearer auth middleware — frontend passes API_BEARER_TOKEN when calling OTP routes
+- [06-01] caregiver_links upsert with onConflict: 'caregiver_id,user_id' — idempotent re-registration safe
 
 ### Critical Build Order Rules
 
@@ -155,13 +158,14 @@ None currently.
 | Phase 05-tests-frontend-demo P04 | 10min | 1 tasks | 1 files |
 | Phase 05.1 P01 | 2min | 4 tasks | 4 files |
 | Phase 05.1-twilio-whatsapp-migration P02 | 8min | 5 tasks | 6 files |
+| Phase 06-auth-contacts-overhaul P01 | 3min | 2 tasks | 4 files |
 
 ## Session Continuity
 
 **To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — Plans 01-01 (schema) and 01-02 (server skeleton) are complete. Next: Plan 01-03 (session state machine + intent classifier).
 
-**Last session:** 2026-03-28T14:53:16.197Z
-**Stopped at:** Completed 05.1-02-PLAN.md — Test suite Twilio migration
+**Last session:** 2026-03-28T21:58:10.131Z
+**Stopped at:** Completed 06-01-PLAN.md — Caregiver Auth Schema + OTP Backend Routes
 
 **Context for next session:**
 
