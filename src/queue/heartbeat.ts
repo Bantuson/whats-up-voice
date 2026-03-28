@@ -30,7 +30,7 @@ export const heartbeatQueue = new Queue('heartbeat', { connection: redis })
 export interface HeartbeatJobData {
   userId:        string   // UUID from users table
   messageLogId:  string   // UUID from message_log table
-  waMessageId:   string   // WhatsApp message ID (used as dedup key)
+  messageSid:    string   // Twilio MessageSid (used as dedup key)
   phone:         string   // E.164 sender phone
   messageBody:   string | null
   mediaType:     string | null
@@ -40,15 +40,15 @@ export interface HeartbeatJobData {
 /**
  * Enqueue a heartbeat job with Redis dedup protection.
  *
- * Dedup key: SET msg:{waMessageId} 1 EX 7200 NX
- *   - EX 7200 = 2-hour TTL (WhatsApp retries within this window)
+ * Dedup key: SET msg:{messageSid} 1 EX 7200 NX
+ *   - EX 7200 = 2-hour TTL (Twilio retries within this window)
  *   - NX      = only set if NOT exists → returns 'OK' on first call, null on duplicate
  *
  * @returns true  — job was enqueued (first occurrence)
  * @returns false — duplicate; job was NOT enqueued
  */
 export async function enqueueHeartbeat(data: HeartbeatJobData): Promise<boolean> {
-  const dedupKey = `msg:${data.waMessageId}`
+  const dedupKey = `msg:${data.messageSid}`   // was: data.waMessageId
   const result = await redis.set(dedupKey, '1', 'EX', 7200, 'NX')
 
   if (result === null) {
