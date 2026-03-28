@@ -22,10 +22,10 @@ const mockQueueAdd = mock(async () => {})
 // Verbatim reimplementation of enqueueHeartbeat() from src/queue/heartbeat.ts.
 // Tests the SET NX dedup contract without importing the production module.
 async function enqueueHeartbeatContract(data: {
-  waMessageId: string
+  messageSid: string
   [key: string]: unknown
 }): Promise<boolean> {
-  const dedupKey = `msg:${data.waMessageId}`
+  const dedupKey = `msg:${data.messageSid}`
   const result = await mockRedisSet(dedupKey, '1', 'EX', 7200, 'NX')
 
   if (result === null) {
@@ -51,7 +51,7 @@ describe('enqueueHeartbeat — dedup gate (HB-01)', () => {
   test('returns true when redis.set returns OK (NX succeeded — first occurrence)', async () => {
     mockRedisSet.mockImplementation(async () => 'OK')
 
-    const result = await enqueueHeartbeatContract({ waMessageId: 'wamid.firstmsg' })
+    const result = await enqueueHeartbeatContract({ messageSid: 'SMfirstmsg001' })
 
     expect(result).toBe(true)
   })
@@ -59,7 +59,7 @@ describe('enqueueHeartbeat — dedup gate (HB-01)', () => {
   test('returns false when redis.set returns null (NX blocked — duplicate)', async () => {
     mockRedisSet.mockImplementation(async () => null)
 
-    const result = await enqueueHeartbeatContract({ waMessageId: 'wamid.dupmsg' })
+    const result = await enqueueHeartbeatContract({ messageSid: 'SMdupmsg001' })
 
     expect(result).toBe(false)
   })
@@ -67,7 +67,7 @@ describe('enqueueHeartbeat — dedup gate (HB-01)', () => {
   test('calls heartbeatQueue.add() on first occurrence (NX OK)', async () => {
     mockRedisSet.mockImplementation(async () => 'OK')
 
-    await enqueueHeartbeatContract({ waMessageId: 'wamid.new001' })
+    await enqueueHeartbeatContract({ messageSid: 'SMnew001' })
 
     expect(mockQueueAdd).toHaveBeenCalledTimes(1)
   })
@@ -75,7 +75,7 @@ describe('enqueueHeartbeat — dedup gate (HB-01)', () => {
   test('does NOT call heartbeatQueue.add() on duplicate (NX null)', async () => {
     mockRedisSet.mockImplementation(async () => null)
 
-    await enqueueHeartbeatContract({ waMessageId: 'wamid.dup001' })
+    await enqueueHeartbeatContract({ messageSid: 'SMdup001' })
 
     expect(mockQueueAdd).toHaveBeenCalledTimes(0)
   })
@@ -83,8 +83,8 @@ describe('enqueueHeartbeat — dedup gate (HB-01)', () => {
   test('redis.set is called with the correct dedup key and NX/EX options', async () => {
     mockRedisSet.mockImplementation(async () => 'OK')
 
-    await enqueueHeartbeatContract({ waMessageId: 'wamid.keycheck' })
+    await enqueueHeartbeatContract({ messageSid: 'SMkeycheck001' })
 
-    expect(mockRedisSet).toHaveBeenCalledWith('msg:wamid.keycheck', '1', 'EX', 7200, 'NX')
+    expect(mockRedisSet).toHaveBeenCalledWith('msg:SMkeycheck001', '1', 'EX', 7200, 'NX')
   })
 })

@@ -22,7 +22,7 @@ describe('Message log helpers', () => {
     const entry = {
       user_id: 'user-abc',
       from_phone: normaliseE164('27821234567'),
-      to_phone: `+${process.env.WHATSAPP_PHONE_NUMBER_ID ?? '15550000000'}`,
+      to_phone: process.env.TWILIO_WHATSAPP_NUMBER ?? '+14155238886',
       direction: 'in' as const,
       body: 'Hello',
       wa_message_id: 'wamid.test001',
@@ -43,7 +43,7 @@ describe('Message log helpers', () => {
     expect(validDirections).not.toContain('outbound')
   })
 
-  test('to_phone for outbound is + prefixed numeric WHATSAPP_PHONE_NUMBER_ID', () => {
+  test('to_phone stores the full TWILIO_WHATSAPP_NUMBER including + prefix', () => {
     const phoneNumberId = '15550000000'
     const toPhone = `+${phoneNumberId}`
     expect(toPhone).toMatch(/^\+\d+$/)
