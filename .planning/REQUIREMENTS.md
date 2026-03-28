@@ -40,9 +40,9 @@
 - [ ] **AGENT-03**: Messaging sub-agent resolves contact by name (e.g. "wife" → Naledi) via `user_contacts` lookup
 - [ ] **AGENT-04**: Messaging sub-agent drafts outbound message and enters `awaiting_approval` state with TTS read-back
 - [ ] **AGENT-05**: User can confirm ("yes/send") or cancel ("no/cancel") pending message — state returns to `idle`
-- [ ] **AGENT-06**: Ambient sub-agent handles load shedding (EskomSePush), weather (OpenWeather), web search (Tavily) — target latency under 3 seconds
-- [ ] **AGENT-07**: All agent spoken responses are plain conversational text — no markdown, no bullet points, one question at a time
-- [ ] **AGENT-08**: Markdown sanitiser applied at TTS call boundary (post-processing, not prompt-only)
+- [x] **AGENT-06**: Ambient sub-agent handles load shedding (EskomSePush), weather (OpenWeather), web search (Tavily) — target latency under 3 seconds
+- [x] **AGENT-07**: All agent spoken responses are plain conversational text — no markdown, no bullet points, one question at a time
+- [x] **AGENT-08**: Markdown sanitiser applied at TTS call boundary (post-processing, not prompt-only)
 
 ### Voice Pipeline
 
@@ -58,7 +58,7 @@
 - [ ] **CONTACT-02**: User can save unknown number by voice: agent asks for name, confirms, inserts to `user_contacts`
 - [ ] **CONTACT-03**: User can proactively save a contact by speaking digits and a name
 - [ ] **CONTACT-04**: User can set/unset a contact as priority by voice ("make Bongani a priority contact")
-- [ ] **CONTACT-05**: Contact name resolution used in all read-aloud flows — phone numbers never spoken when name is known
+- [x] **CONTACT-05**: Contact name resolution used in all read-aloud flows — phone numbers never spoken when name is known
 
 ### Cron & Morning Briefing
 
