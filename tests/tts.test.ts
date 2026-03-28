@@ -106,6 +106,15 @@ describe('streamSpeech', () => {
   })
 })
 
+describe('streamSpeech — outputFormat', () => {
+  it('always uses outputFormat opus_48000_32 — never the SDK default MP3', async () => {
+    await streamSpeech('hello', 'user-1')
+    expect(mockTextToSpeechStream).toHaveBeenCalledTimes(1)
+    const callArgs = mockTextToSpeechStream.mock.calls[0]
+    expect(callArgs[1].outputFormat).toBe('opus_48000_32')
+  })
+})
+
 describe('pushInterrupt', () => {
   it('delegates to streamSpeech with correct userId and text', async () => {
     const { pushInterrupt } = await import('../src/ws/connections')

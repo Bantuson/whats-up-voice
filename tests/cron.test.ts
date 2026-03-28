@@ -38,6 +38,7 @@ let mockUserProfiles: Array<{ user_id: string }> = [{ user_id: 'user-a' }, { use
 let mockRoutineLastRun: string | null = null
 let mockMessages: Array<{ from_phone: string; body: string | null; media_type: string | null }> = []
 let mockContacts: Array<{ phone: string; name: string; is_priority: boolean }> = []
+let mockReminders: Array<{ id: string; user_id: string; cron_pattern: string }> = []
 
 mock.module('../src/db/client', () => ({
   supabase: {
@@ -55,7 +56,7 @@ mock.module('../src/db/client', () => ({
             if (fields && fields.includes('cron_pattern')) {
               return {
                 eq: () => ({
-                  eq: () => ({ data: [], error: null }),
+                  eq: () => ({ data: mockReminders, error: null }),
                 }),
               }
             }
@@ -131,6 +132,7 @@ describe('syncUserRoutines()', () => {
   beforeEach(() => {
     mockUpsertJobScheduler.mockClear()
     mockUserProfiles = [{ user_id: 'user-a' }, { user_id: 'user-b' }]
+    mockReminders = []
   })
 
   test('calls upsertJobScheduler with correct scheduler ID for morning_briefing', async () => {
@@ -153,6 +155,15 @@ describe('syncUserRoutines()', () => {
     const eveningCall = mockUpsertJobScheduler.mock.calls.find(c => String(c[0]) === 'evening_digest:user-a')
     expect(eveningCall).toBeDefined()
     expect(eveningCall![1].pattern).toBe('0 18 * * *')
+  })
+
+  test('registers custom reminder with scheduler ID reminder:userId:routineId and its cron_pattern', async () => {
+    mockReminders = [{ id: 'routine-99', user_id: 'user-a', cron_pattern: '30 8 * * 1' }]
+    await syncUserRoutines()
+    const reminderCall = mockUpsertJobScheduler.mock.calls.find(c => String(c[0]).startsWith('reminder:'))
+    expect(reminderCall).toBeDefined()
+    expect(reminderCall![0]).toBe('reminder:user-a:routine-99')
+    expect(reminderCall![1].pattern).toBe('30 8 * * 1')
   })
 })
 
