@@ -3,7 +3,7 @@
 **Phase:** Demo day — run this checklist in order, top to bottom.
 **Time budget:** 30 minutes before demo start.
 
-**Test suite status (automated — run before demo):** 200 pass, 0 fail (verified 2026-03-28)
+**Test suite status (automated — run before demo):** 201 pass, 0 fail (verified 2026-03-28 after Twilio migration)
 
 ---
 
@@ -18,26 +18,30 @@
 
 | Variable | Where to find | Status |
 |----------|---------------|--------|
-| WHATSAPP_APP_SECRET | Meta Business Manager → App → Basic Settings | [ ] |
-| WHATSAPP_ACCESS_TOKEN | Meta Business Manager → System User → Generate Token (expires!) | [ ] |
-| WHATSAPP_PHONE_NUMBER_ID | Meta → WhatsApp → Getting Started | [ ] |
-| WHATSAPP_VERIFY_TOKEN | Your .env file | [ ] |
+| TWILIO_ACCOUNT_SID | console.twilio.com → Account Info | [ ] |
+| TWILIO_AUTH_TOKEN | console.twilio.com → Account Info | [ ] |
+| TWILIO_WHATSAPP_NUMBER | console.twilio.com → Messaging → Senders (e.g. +14155238886) | [ ] |
 | ANTHROPIC_API_KEY | console.anthropic.com | [ ] |
 | OPENAI_API_KEY | platform.openai.com | [ ] |
 | ELEVENLABS_API_KEY | elevenlabs.io → Profile | [ ] |
+| ELEVENLABS_VOICE_ID_EN | elevenlabs.io → Voice Library → note ID of EN voice | [ ] |
+| ELEVENLABS_VOICE_ID_AF | elevenlabs.io → Voice Library → note ID of AF voice | [ ] |
 | REDIS_URL | Upstash or Railway dashboard | [ ] |
 | SUPABASE_URL | Supabase project settings | [ ] |
 | SUPABASE_SERVICE_ROLE_KEY | Supabase project settings → API | [ ] |
-| API_BEARER_TOKEN | Your .env file | [ ] |
+| API_BEARER_TOKEN | Your .env file (any string) | [ ] |
+| ESKOMSEPUSH_API_KEY | eskomsepush.app → API | [ ] |
+| OPENWEATHER_API_KEY | openweathermap.org → API keys | [ ] |
+| TAVILY_API_KEY | app.tavily.com | [ ] |
 
-## 3. Meta / WhatsApp
+## 3. Twilio / WhatsApp
 
 | Check | Action | Status |
 |-------|--------|--------|
-| Meta system user token fresh | Generate NEW token within 1 hour of demo start | [ ] |
-| WABA tier | Business Manager → WhatsApp → Overview — confirm 250-message limit NOT reached | [ ] |
-| Webhook active | Meta → WhatsApp → Configuration — webhook URL shows green | [ ] |
-| Test phone registered | Send test message and confirm it arrives | [ ] |
+| Sandbox joined | Twilio console → Messaging → Try it out → Send a WhatsApp message to join sandbox | [ ] |
+| Webhook URL configured | Twilio → Messaging → Senders → your sandbox number → Webhook URL = `https://YOUR_URL/webhook/whatsapp` | [ ] |
+| Test phone registered | Send "join [sandbox-word]" from test phone — confirm Twilio shows it joined | [ ] |
+| Inbound round-trip | Send a WhatsApp message from test phone → confirm server logs show [Webhook] and job enqueued | [ ] |
 
 ## 4. Backend Health
 
@@ -52,7 +56,7 @@
 
 | Check | Action | Status |
 |-------|--------|--------|
-| Dev server starts | `cd frontend && bun run dev` | Port 5173, no errors | [ ] |
+| Dev server starts | `cd frontend` then `bunx vite` (not `bun run dev` — bun Windows bug with .exe scripts) | Port 5173, no errors | [ ] |
 | Login page loads | Open http://localhost:5173 | Redirects to /login | [ ] |
 | Enter phone + Connect | Enter +27 number | Redirects to /dashboard | [ ] |
 | Dashboard renders | Check waveform shows | 24 grey bars visible | [ ] |
