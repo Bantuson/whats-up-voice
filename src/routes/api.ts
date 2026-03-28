@@ -295,20 +295,30 @@ async function handleConfirmSend(c: any, userId: string) {
   const { to, toName, body } = state.pendingMessage
 
   try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID!
+    const authToken  = process.env.TWILIO_AUTH_TOKEN!
+    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER!
+
+    const formBody = new URLSearchParams({
+      From: `whatsapp:${fromNumber}`,
+      To:   `whatsapp:${to}`,
+      Body: body,
+    })
+
     const res = await fetch(
-      `https://graph.facebook.com/v23.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${process.env.WHATSAPP_ACCESS_TOKEN}`,
-          'Content-Type': 'application/json',
+          Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: JSON.stringify({ messaging_product: 'whatsapp', to, type: 'text', text: { body } }),
+        body: formBody.toString(),
         signal: AbortSignal.timeout(5000),
       }
     )
-    const json = await res.json() as { messages?: Array<{ id: string }> }
-    const wamid = json.messages?.[0]?.id
+    const json = await res.json() as { sid?: string }
+    const wamid = json.sid
 
     // Log to message_log direction='out' — ISO-01: includes user_id
     await supabase.from('message_log').insert({
