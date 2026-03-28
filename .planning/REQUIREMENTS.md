@@ -48,8 +48,8 @@
 
 - [ ] **VOICE-01**: `POST /api/voice/command` accepts `{ userId, transcript, sessionId }` and returns `{ spoken, action, requiresConfirmation, pendingAction }`
 - [ ] **VOICE-02**: OpenAI Whisper (`whisper-1`) used for STT transcription with language hint for EN/AF
-- [ ] **VOICE-03**: ElevenLabs TTS using `eleven_flash_v2_5` (not deprecated `eleven_turbo_v2_5`) for English and Afrikaans
-- [ ] **VOICE-04**: TTS output streamed via WebSocket (`/ws/session/:userId`) — first audio chunk target under 500ms
+- [x] **VOICE-03**: ElevenLabs TTS using `eleven_flash_v2_5` (not deprecated `eleven_turbo_v2_5`) for English and Afrikaans
+- [x] **VOICE-04**: TTS output streamed via WebSocket (`/ws/session/:userId`) — first audio chunk target under 500ms
 - [ ] **VOICE-05**: Received voice notes fetched from WhatsApp Media URL and streamed to device for playback
 
 ### Contact Management
