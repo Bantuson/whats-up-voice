@@ -18,6 +18,7 @@ const REQUIRED_ENV_VARS = [
   'ESKOMSEPUSH_API_KEY',
   'OPENWEATHER_API_KEY',
   'TAVILY_API_KEY',
+  'SUPABASE_ANON_KEY',
 ] as const
 
 export function validateEnv(): void {

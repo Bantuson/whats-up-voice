@@ -20,6 +20,7 @@ import { bearerAuth } from 'hono/bearer-auth'
 import { healthRouter } from './routes/health'
 import { webhookRouter } from './routes/webhook'
 import { apiRouter } from './routes/api'
+import { authRouter } from './routes/auth'
 import { registerConnection, removeConnection } from './ws/connections'
 import './queue/worker'  // boots heartbeat worker at startup
 import { syncUserRoutines } from './cron/routines'
@@ -75,6 +76,7 @@ app.use('/api/*', bearerAuth({ token: process.env.API_BEARER_TOKEN! }))
 app.route('/health', healthRouter)
 app.route('/webhook', webhookRouter)
 app.route('/api', apiRouter)
+app.route('/api/auth', authRouter)
 
 // STEP 5: WebSocket upgrade — ISO-03: scoped per userId, no cross-user delivery
 // Each connection stored in connections Map by userId via registerConnection.
