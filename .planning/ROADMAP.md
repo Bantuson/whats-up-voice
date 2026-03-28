@@ -15,7 +15,7 @@
 - [x] **Phase 3: Agent Intelligence** — Claude orchestrator + sub-agents, intent classification, contact management flows
  (completed 2026-03-28)
 - [x] **Phase 4: Voice Pipeline + Cron** — Full audio round-trip (STT → TTS → WebSocket), morning briefing scheduler
-- [ ] **Phase 5: Tests + Frontend + Demo** — 85+ test cases, caregiver dashboard, episodic memory, demo polish
+- [x] **Phase 5: Tests + Frontend + Demo** — 85+ test cases, caregiver dashboard, episodic memory, demo polish (completed 2026-03-28)
 
 ---
 
@@ -146,13 +146,13 @@ Plans:
 
 **UI hint**: yes
 
-**Plans:** 1/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
-- [ ] 05-01-PLAN.md — Test suite: fix 13 failing tests + add messageLog.test.ts (85+ passing, 0 failing)
-- [ ] 05-02-PLAN.md — Episodic memory: embed.ts + store.ts + recall.ts + orchestrator injection
+- [x] 05-01-PLAN.md — Test suite: fix 13 failing tests + add messageLog.test.ts (85+ passing, 0 failing)
+- [x] 05-02-PLAN.md — Episodic memory: embed.ts + store.ts + recall.ts + orchestrator injection
 - [x] 05-03-PLAN.md — Caregiver dashboard: Vite + React 18, 7 pages, SSE, terminal aesthetic
-- [ ] 05-04-PLAN.md — Demo polish + pre-demo checklist (wave 2)
+- [x] 05-04-PLAN.md — Demo polish + pre-demo checklist (wave 2)
 **Verification:** `bun test` output shows 85+ passing, 0 failing; open dashboard URL, send a WhatsApp message, confirm heartbeat feed updates within 2 seconds; query agent for a topic discussed in a previous session, confirm memory snippet appears in the system prompt (log output); run full demo script once without intervention.
 
 **Dependencies:** Phase 4 complete; Vite + React dev environment configured; all external API keys active and tested.
@@ -167,7 +167,7 @@ Plans:
 | 2. Webhook + Heartbeat | 1/3 | In Progress|  |
 | 3. Agent Intelligence | 4/6 | In Progress|  |
 | 4. Voice Pipeline + Cron | 1/3 | In Progress|  |
-| 5. Tests + Frontend + Demo | 1/4 | In Progress|  |
+| 5. Tests + Frontend + Demo | 4/4 | Complete   | 2026-03-28 |
 
 ---
 
