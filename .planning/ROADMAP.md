@@ -262,10 +262,10 @@ The following constraints from research are explicitly encoded in phase plans an
 **Depends on:** Phase 5
 **Requirements**: WA-01 (updated), WA-02 (updated), WA-03, WA-04, WA-05
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed
 
 Plans:
 - [x] 05.1-01-PLAN.md — Inbound migration: env vars, verifyTwilioSignature, webhook handler rewrite, HeartbeatJobData field rename (waMessageId → messageSid)
-- [ ] 05.1-02-PLAN.md — Test suite migration: Twilio signature tests, form-encoded handler tests, remove GET hub-verification tests, rename messageSid in dedup tests
+- [x] 05.1-02-PLAN.md — Test suite migration: Twilio signature tests, form-encoded handler tests, remove GET hub-verification tests, rename messageSid in dedup tests
 
 **Verification:** `bun run src/server.ts` starts with Twilio env vars; `bun test` 85+ passing 0 failing; `bunx tsc --noEmit` 0 errors; `grep -r "verifyWhatsAppHmac\|WHATSAPP_APP_SECRET\|waMessageId" src/ tests/` returns nothing.
