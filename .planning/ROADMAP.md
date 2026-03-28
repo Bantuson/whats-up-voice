@@ -262,7 +262,7 @@ The following constraints from research are explicitly encoded in phase plans an
 **Depends on:** Phase 5
 **Requirements**: WA-01 (updated), WA-02 (updated), WA-03, WA-04, WA-05
 
-**Plans:** 2/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 05.1-01-PLAN.md — Inbound migration: env vars, verifyTwilioSignature, webhook handler rewrite, HeartbeatJobData field rename (waMessageId → messageSid)
