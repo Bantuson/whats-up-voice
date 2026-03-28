@@ -54,7 +54,7 @@
 
 ### Contact Management
 
-- [ ] **CONTACT-01**: Unknown number inbound triggers `interrupt` with spoken phone number (digit-by-digit format: "plus 2 7 8 3 1...")
+- [ ] **CONTACT-01**: Unknown number inbound triggers `interrupt` with spoken phone number (digit-by-digit format: "plus 2 7 8 3 1...") *(Deferred to Phase 4 — requires TTS/pushInterrupt wiring from Phase 4 Plan 2)*
 - [x] **CONTACT-02**: User can save unknown number by voice: agent asks for name, confirms, inserts to `user_contacts`
 - [x] **CONTACT-03**: User can proactively save a contact by speaking digits and a name
 - [x] **CONTACT-04**: User can set/unset a contact as priority by voice ("make Bongani a priority contact")
@@ -129,7 +129,8 @@
 | HB-01 – HB-06 | Phase 2 | Pending |
 | AGENT-01 – AGENT-08 | Phase 3 | Pending |
 | VOICE-01 – VOICE-05 | Phase 4 | Pending |
-| CONTACT-01 – CONTACT-05 | Phase 3 | Pending |
+| CONTACT-02 – CONTACT-05 | Phase 3 | Pending |
+| CONTACT-01              | Phase 4 | Pending |
 | CRON-01 – CRON-04 | Phase 4 | Pending |
 | ISO-01 – ISO-03 | Phase 1 | Pending |
 | TEST-01 | Phase 5 | Pending |
