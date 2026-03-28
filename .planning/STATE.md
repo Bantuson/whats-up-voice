@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 06-02-PLAN.md — Supabase client singleton + auth store
-last_updated: "2026-03-28T22:02:39.486Z"
+stopped_at: Completed 06-03-PLAN.md — Auth.tsx + App.tsx rewrite + Login.tsx deletion
+last_updated: "2026-03-28T22:11:58.436Z"
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 20
-  completed_plans: 22
+  completed_plans: 24
   percent: 0
 ---
 
@@ -32,7 +32,7 @@ progress:
 ## Current Position
 
 Phase: 06 (auth-contacts-overhaul) — EXECUTING
-Plan: 1 of 4
+Plan: 2 of 4
 | Field | Value |
 |-------|-------|
 | Phase | 1 — Foundation |
@@ -101,6 +101,8 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - [06-01] Twilio plain SMS for VI user OTP — works before WhatsApp sandbox join, no whatsapp: prefix
 - [06-01] authRouter mounted at /api/auth under Bearer auth middleware — frontend passes API_BEARER_TOKEN when calling OTP routes
 - [06-01] caregiver_links upsert with onConflict: 'caregiver_id,user_id' — idempotent re-registration safe
+- [06-03] Auth.tsx step progression managed by local useState Step type (email|email-otp|phone|phone-otp) — no router-level sub-routes needed for single-screen wizard
+- [06-03] App.tsx pre-auth branch renders Routes with /auth only; post-auth branch renders full sidebar — clean separation avoids conditional route rendering bugs
 
 ### Critical Build Order Rules
 
@@ -160,13 +162,14 @@ None currently.
 | Phase 05.1-twilio-whatsapp-migration P02 | 8min | 5 tasks | 6 files |
 | Phase 06-auth-contacts-overhaul P01 | 3min | 2 tasks | 4 files |
 | Phase 06-auth-contacts-overhaul P06-02 | 7min | 2 tasks | 5 files |
+| Phase 06-auth-contacts-overhaul P06-03 | 4min | 2 tasks | 3 files |
 
 ## Session Continuity
 
 **To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — Plans 01-01 (schema) and 01-02 (server skeleton) are complete. Next: Plan 01-03 (session state machine + intent classifier).
 
-**Last session:** 2026-03-28T22:02:39.471Z
-**Stopped at:** Completed 06-02-PLAN.md — Supabase client singleton + auth store
+**Last session:** 2026-03-28T22:11:58.420Z
+**Stopped at:** Completed 06-03-PLAN.md — Auth.tsx + App.tsx rewrite + Login.tsx deletion
 
 **Context for next session:**
 
