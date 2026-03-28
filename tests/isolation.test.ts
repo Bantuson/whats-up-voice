@@ -1,11 +1,26 @@
 import { describe, test, expect } from 'bun:test'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-)
+// Skip all Supabase integration tests when credentials are not set or are test placeholders.
+// tests/setup.ts sets SUPABASE_URL='https://test.supabase.co' as a placeholder to prevent
+// import-time crashes from supabase createClient(). Real credentials point to a *.supabase.co
+// subdomain that is NOT 'test.supabase.co' and have a real JWT key (not 'test-service-role-key').
+const hasSupabase =
+  !!process.env.SUPABASE_URL &&
+  process.env.SUPABASE_URL.length > 0 &&
+  !process.env.SUPABASE_URL.includes('placeholder') &&
+  process.env.SUPABASE_URL !== 'https://test.supabase.co' &&
+  !!process.env.SUPABASE_SERVICE_ROLE_KEY &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY.length > 0 &&
+  process.env.SUPABASE_SERVICE_ROLE_KEY !== 'test-service-role-key'
+
+const supabase = hasSupabase
+  ? createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    )
+  : null
 
 const FABRICATED_USER_ID = '00000000-0000-0000-0000-000000000001'
 
@@ -24,8 +39,8 @@ describe('ISO-01: App-layer user_id isolation', () => {
   ]
 
   for (const tableName of userScopedTables) {
-    test(`${tableName} returns zero rows for fabricated user_id`, async () => {
-      const { data, error } = await supabase
+    test.skipIf(!hasSupabase)(`${tableName} returns zero rows for fabricated user_id`, async () => {
+      const { data, error } = await supabase!
         .from(tableName)
         .select('id')
         .eq('user_id', FABRICATED_USER_ID)
