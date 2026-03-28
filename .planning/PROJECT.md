@@ -19,6 +19,13 @@ A visually impaired South African can independently send and receive WhatsApp me
 - E.164 phone normalisation for SA numbers (ISO-02)
 - Fast-path regex intent classifier — 10 patterns, < 0.005ms/call, no LLM (ISO-01, AGENT-02 partial)
 
+**Validated in Phase 3: Agent Intelligence**
+- Markdown sanitiser for spoken-natural LLM output — strips formatting before TTS (AGENT-04)
+- 9 tool handler functions with explicit `user_id` filtering across all Supabase queries (AGENT-03, AGENT-05, AGENT-06, AGENT-07, AGENT-08)
+- Contact name resolution via `.ilike('name', name)` — case-insensitive, no RPC dependency (CONTACT-02 through CONTACT-05)
+- Claude orchestrator with manual tool-use agentic loop — `POST /api/voice/command` wired (AGENT-01, AGENT-02)
+- CONTACT-01 (unknown number spoken digit-by-digit) deferred to Phase 4 — requires ElevenLabs TTS + pushInterrupt wiring
+
 ### Active
 
 **P0 — Hackathon v0.1 must-haves**
@@ -103,4 +110,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-27 (Phase 1 complete) 2026-03-27 after initialization*
+*Last updated: 2026-03-28 (Phase 3 complete — agent intelligence, 32/32 must-haves verified)*
