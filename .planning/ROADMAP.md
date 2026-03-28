@@ -168,7 +168,7 @@ Plans:
 | 3. Agent Intelligence | 4/6 | In Progress|  |
 | 4. Voice Pipeline + Cron | 1/3 | In Progress|  |
 | 5. Tests + Frontend + Demo | 4/4 | Complete   | 2026-03-28 |
-| 6. Auth + Contacts Overhaul | 0/4 | Not started | - |
+| 6. Auth + Contacts Overhaul | 1/4 | In Progress|  |
 
 ---
 
@@ -292,7 +292,7 @@ Plans:
 
 Plans:
 - [ ] 06-01-PLAN.md — Supabase migration 003_caregiver_auth.sql + backend OTP routes (send-otp, verify-otp) + SUPABASE_ANON_KEY env var
-- [ ] 06-02-PLAN.md — Frontend Supabase client singleton + appStore rewrite (caregiverId, session, isAuthenticated, signIn, verifyOtp, linkViUser, signOut)
+- [x] 06-02-PLAN.md — Frontend Supabase client singleton + appStore rewrite (caregiverId, session, isAuthenticated, signIn, verifyOtp, linkViUser, signOut)
 - [ ] 06-03-PLAN.md — Auth.tsx two-step gate + App.tsx auth guard + cleaned NAV_ITEMS + delete Login.tsx
 - [ ] 06-04-PLAN.md — Setup.tsx Section B: manual contact entry + native/CSV import + contact list with delete
 
