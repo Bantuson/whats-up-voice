@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.1
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 04-voice-pipeline-cron-04-01-PLAN.md
-last_updated: "2026-03-28T11:38:01.864Z"
+stopped_at: Completed 04-voice-pipeline-cron-04-02-PLAN.md
+last_updated: "2026-03-28T11:43:20.881Z"
 progress:
   total_phases: 5
   completed_phases: 2
@@ -93,10 +93,6 @@ Phase 1: ░░░  Phase 2: ░░░  Phase 3: ░░░  Phase 4: ░░░  
 - [03-02] Lazy Anthropic singleton (_anthropic = null, getAnthropic() factory) — Bun 1.3.x mock.module hoisting requires lazy instantiation so test mocks intercept before first client creation
 - [03-02] Only @anthropic-ai/sdk mocked in orchestrator tests — tool module mocks cause cross-file contamination in Bun 1.3.x single-process test runner
 - [03-02] ALL_TOOLS has 10 entries — plan description said 9 tools but behavior spec lists 10 names; count confirmed correct
-- [04-01] Dynamic import in pushInterrupt breaks ws/connections <-> tts/elevenlabs circular dependency — static import safe on tts side, dynamic on connections side
-- [04-01] ElevenLabsClient used exclusively — ElevenLabs constructor throws TypeError at runtime
-- [04-01] Lazy _client singleton in tts/elevenlabs.ts mirrors ambient.ts pattern — allows Bun mock.module to intercept before construction
-- [04-01] ws/manager.ts kept intact — queue/worker.ts still imports it; Plan 04-02 will migrate to pushInterrupt
 
 ### Critical Build Order Rules
 
@@ -145,14 +141,14 @@ None currently.
 | Phase 03-agent-intelligence P03-01 | 10min | 3 tasks | 10 files |
 | Phase 03-agent-intelligence P02 | 13min | 1 tasks | 2 files |
 | Phase 03-agent-intelligence P03 | 5min | 2 tasks | 3 files |
-| Phase 04-voice-pipeline-cron P04-01 | 4min | 4 tasks | 5 files |
+| Phase 04-voice-pipeline-cron P04-02 | 28min | 4 tasks | 7 files |
 
 ## Session Continuity
 
 **To resume work:** Read ROADMAP.md for phase structure and success criteria. Read REQUIREMENTS.md for requirement IDs. Current phase is Phase 1 — Plans 01-01 (schema) and 01-02 (server skeleton) are complete. Next: Plan 01-03 (session state machine + intent classifier).
 
-**Last session:** 2026-03-28T11:38:01.847Z
-**Stopped at:** Completed 04-voice-pipeline-cron-04-01-PLAN.md
+**Last session:** 2026-03-28T11:43:20.859Z
+**Stopped at:** Completed 04-voice-pipeline-cron-04-02-PLAN.md
 
 **Context for next session:**
 

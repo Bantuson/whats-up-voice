@@ -3,15 +3,25 @@
 // All routes here are protected by Bearer auth middleware in server.ts (mounted at /api).
 // Fast-path intents bypass the LLM entirely (< 1ms). Slow-path routes to Claude orchestrator.
 import { Hono } from 'hono'
+import { toFile } from 'openai'
+import OpenAI from 'openai'
 import { classifyIntent } from '../agent/classifier'
 import { runOrchestrator } from '../agent/orchestrator'
 import { toolReadMessages } from '../tools/whatsapp'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
-import { getState, getPhase, clearSession } from '../session/machine'
+import { getState, getPhase, clearSession, transition } from '../session/machine'
 import { supabase } from '../db/client'
 import { spokenError } from '../lib/errors'
+import { streamSpeech } from '../tts/elevenlabs'
 
 export const apiRouter = new Hono()
+
+// Lazy OpenAI singleton — same pattern as ambient.ts
+let _openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
+  return _openai
+}
 
 // In-process no-match counter for three-strike approval reset (AGENT-05).
 // Must be cleared whenever clearSession() is called.
@@ -23,22 +33,91 @@ function clearUserState(userId: string): void {
 }
 
 // ---------------------------------------------------------------------------
+// deliverSpoken — wire TTS after every spoken response (VOICE-03, VOICE-04)
+// Fires streamSpeech non-blocking so JSON response returns immediately.
+// Session transitions: playing (before TTS) → idle (after kicking off TTS).
+// ---------------------------------------------------------------------------
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function deliverSpoken(c: any, userId: string, spoken: string, action: string, rest: Record<string, unknown> = {}): Promise<Response> {
+  // Transition to playing — guard: some session phases may not allow it
+  try {
+    transition(userId, 'playing')
+  } catch {
+    // Session may be in a state that doesn't allow playing (e.g. awaiting_approval)
+    // Still deliver audio but do not mutate session state
+  }
+
+  // Fire TTS — do not await to keep response latency low; client receives JSON immediately
+  // and audio arrives via WebSocket independently
+  streamSpeech(spoken, userId).catch((err) => {
+    console.error(`[TTS] streamSpeech failed for ${userId}:`, err)
+  })
+
+  // Transition back to idle after kicking off TTS (non-blocking)
+  try {
+    transition(userId, 'idle')
+  } catch { /* ignore — session may already be idle */ }
+
+  return c.json({ spoken, action, requiresConfirmation: false, ...rest })
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/voice/command
-// Body: { userId: string, transcript: string, sessionId?: string }
+// Body (JSON): { userId: string, transcript: string, sessionId?: string }
+// Body (multipart): { userId: string, audioBlob: File }
 // Response: { spoken: string, action: string, requiresConfirmation: boolean, pendingAction?: object }
 // ---------------------------------------------------------------------------
 apiRouter.post('/voice/command', async (c) => {
   let userId: string
   let transcript: string
+
   try {
-    const body = await c.req.json() as { userId?: string; transcript?: string; sessionId?: string }
-    if (!body.userId || !body.transcript) {
-      return c.json({ error: 'userId and transcript are required' }, 400)
+    const contentType = c.req.header('content-type') ?? ''
+
+    if (contentType.includes('multipart/form-data')) {
+      // STT path (VOICE-02)
+      const formData = await c.req.formData()
+      const userIdField = formData.get('userId')
+      const audioBlobField = formData.get('audioBlob')
+
+      if (!userIdField || !audioBlobField || !(audioBlobField instanceof File)) {
+        return c.json({ error: 'userId and audioBlob are required for multipart requests' }, 400)
+      }
+      userId = String(userIdField)
+
+      // Fetch language from user_profile for Whisper language hint
+      const { data: profile } = await supabase
+        .from('user_profile')
+        .select('language')
+        .eq('user_id', userId)
+        .single()
+      const lang: string = profile?.language ?? 'en'
+
+      // Convert File → openai File using toFile() helper
+      const arrayBuffer = await audioBlobField.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+      const file = await toFile(buffer, 'audio.ogg', { type: 'audio/ogg' })
+
+      const result = await getOpenAI().audio.transcriptions.create({
+        model: 'whisper-1',
+        file,
+        language: lang,
+      })
+      transcript = result.text.trim()
+      if (!transcript) {
+        return c.json({ error: 'STT returned empty transcript' }, 422)
+      }
+    } else {
+      // Existing JSON text path (VOICE-01 — preserved exactly)
+      const body = await c.req.json() as { userId?: string; transcript?: string; sessionId?: string }
+      if (!body.userId || !body.transcript) {
+        return c.json({ error: 'userId and transcript are required' }, 400)
+      }
+      userId = body.userId
+      transcript = body.transcript.trim()
     }
-    userId = body.userId
-    transcript = body.transcript.trim()
   } catch {
-    return c.json({ error: 'Invalid JSON body' }, 400)
+    return c.json({ error: 'Invalid request body' }, 400)
   }
 
   const intent = classifyIntent(transcript)
@@ -53,7 +132,7 @@ apiRouter.post('/voice/command', async (c) => {
 
   if (intent === 'cancel') {
     clearUserState(userId)
-    return c.json({ spoken: 'Message cancelled.', action: 'cancel', requiresConfirmation: false })
+    return deliverSpoken(c, userId, 'Message cancelled.', 'cancel')
   }
 
   // ------------------------------------------------------------------
@@ -90,13 +169,13 @@ apiRouter.post('/voice/command', async (c) => {
   if (intent === 'load_shedding') {
     const signal = AbortSignal.timeout(5000)
     const spoken = await toolGetLoadShedding(signal)
-    return c.json({ spoken, action: 'fast_path', requiresConfirmation: false })
+    return deliverSpoken(c, userId, spoken, 'fast_path')
   }
 
   if (intent === 'weather') {
     const signal = AbortSignal.timeout(5000)
     const spoken = await toolGetWeather(signal)
-    return c.json({ spoken, action: 'fast_path', requiresConfirmation: false })
+    return deliverSpoken(c, userId, spoken, 'fast_path')
   }
 
   // ------------------------------------------------------------------
@@ -104,7 +183,7 @@ apiRouter.post('/voice/command', async (c) => {
   // ------------------------------------------------------------------
   if (intent === 'read_messages') {
     const spoken = await toolReadMessages(userId, 5)
-    return c.json({ spoken, action: 'fast_path', requiresConfirmation: false })
+    return deliverSpoken(c, userId, spoken, 'fast_path')
   }
 
   // ------------------------------------------------------------------
@@ -113,7 +192,7 @@ apiRouter.post('/voice/command', async (c) => {
   if (intent === 'web_search') {
     const signal = AbortSignal.timeout(5000)
     const spoken = await toolWebSearch(transcript, signal)
-    return c.json({ spoken, action: 'fast_path', requiresConfirmation: false })
+    return deliverSpoken(c, userId, spoken, 'fast_path')
   }
 
   // ------------------------------------------------------------------
@@ -126,6 +205,9 @@ apiRouter.post('/voice/command', async (c) => {
     const spoken = await runOrchestrator(userId, transcript, controller.signal)
     const state = getState(userId)
     const requiresConfirmation = state.phase === 'awaiting_approval'
+    if (!requiresConfirmation) {
+      return deliverSpoken(c, userId, spoken, 'agent')
+    }
     return c.json({
       spoken,
       action: 'agent',
@@ -144,6 +226,59 @@ apiRouter.post('/voice/command', async (c) => {
     })
   } finally {
     clearTimeout(timer)
+  }
+})
+
+// ---------------------------------------------------------------------------
+// POST /api/voice/playback — VOICE-05
+// Body: { userId: string, mediaUrl: string }
+// Fetches Twilio media with Basic auth and streams audio to user's WebSocket.
+// ---------------------------------------------------------------------------
+apiRouter.post('/voice/playback', async (c) => {
+  let userId: string
+  let mediaUrl: string
+  try {
+    const body = await c.req.json() as { userId?: string; mediaUrl?: string }
+    if (!body.userId || !body.mediaUrl) {
+      return c.json({ error: 'userId and mediaUrl are required' }, 400)
+    }
+    userId = body.userId
+    mediaUrl = body.mediaUrl
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
+
+  const ws = (await import('../ws/connections')).getConnection(userId)
+  if (!ws) {
+    return c.json({ error: 'No active WebSocket connection for user' }, 404)
+  }
+
+  const accountSid = process.env.TWILIO_ACCOUNT_SID!
+  const authToken  = process.env.TWILIO_AUTH_TOKEN!
+  const authHeader = `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`
+
+  try {
+    const mediaRes = await fetch(mediaUrl, {
+      headers: { Authorization: authHeader },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!mediaRes.ok || !mediaRes.body) {
+      return c.json({ error: 'Failed to fetch media' }, 502)
+    }
+
+    ws.send(JSON.stringify({ type: 'audio_start' }))
+
+    const reader = mediaRes.body.getReader()
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (value) ws.send(value)
+    }
+
+    ws.send(JSON.stringify({ type: 'audio_end' }))
+    return c.json({ streamed: true }, 200)
+  } catch {
+    return c.json({ error: 'Media streaming failed' }, 500)
   }
 })
 
@@ -186,6 +321,10 @@ async function handleConfirmSend(c: any, userId: string) {
 
     clearUserState(userId)
     const name = toName ?? to
+
+    // Wire TTS for confirm_send (VOICE-04)
+    streamSpeech(`Message sent to ${name}.`, userId).catch(() => {})
+
     return c.json({
       spoken: `Message sent to ${name}.`,
       action: 'confirm',
