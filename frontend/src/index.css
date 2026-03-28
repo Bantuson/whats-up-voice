@@ -1,0 +1,134 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --color-bg:          #0D0D0D;
+  --color-surface:     #1A1A1A;
+  --color-surface-alt: #111111;
+  --color-border:      #2A2A2A;
+  --color-accent:      #00FF88;
+  --color-accent-dim:  #00CC6A;
+  --color-accent-dark: #00AA55;
+  --color-destructive: #FF4444;
+  --color-text:        #E0E0E0;
+  --color-text-muted:  #666666;
+  --color-text-placeholder: #444444;
+  --color-interrupt: #00FF88;
+  --color-batch:     #FFAA00;
+  --color-skip:      #FF4444;
+  --color-silent:    #555555;
+  --font-data:  'IBM Plex Mono', monospace;
+  --font-prose: 'IBM Plex Sans', sans-serif;
+  --size-body:    14px;
+  --size-data:    14px;
+  --size-label:   12px;
+  --size-heading: 20px;
+  --weight-regular: 400;
+  --weight-semibold: 600;
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-pill: 12px;
+  --touch-target: 44px;
+}
+
+html, body, #root {
+  height: 100%;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-prose);
+  font-size: var(--size-body);
+}
+
+/* CTA Button */
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-bg);
+  font-family: var(--font-prose);
+  font-size: var(--size-body);
+  font-weight: var(--weight-semibold);
+  height: var(--touch-target);
+  padding: 0 var(--space-md);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.btn-primary:hover  { background: var(--color-accent-dim); }
+.btn-primary:active { background: var(--color-accent-dark); }
+.btn-primary:disabled { background: var(--color-surface); color: var(--color-text-placeholder); border: 1px solid var(--color-border); cursor: not-allowed; }
+
+/* Destructive Button */
+.btn-destructive {
+  background: transparent;
+  color: var(--color-destructive);
+  border: 1px solid var(--color-destructive);
+  font-family: var(--font-prose);
+  font-size: var(--size-body);
+  height: var(--touch-target);
+  padding: 0 var(--space-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.btn-destructive:hover { background: rgba(255, 68, 68, 0.1); }
+
+/* Form fields */
+.field-label {
+  font-family: var(--font-prose);
+  font-size: var(--size-label);
+  font-weight: var(--weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-bottom: var(--space-sm);
+}
+.field-input {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-data);
+  font-size: var(--size-data);
+  height: var(--touch-target);
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  width: 100%;
+  outline: none;
+}
+.field-input::placeholder { color: var(--color-text-placeholder); }
+.field-input:focus { border-color: var(--color-accent); outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* Toggle */
+.toggle {
+  position: relative; display: inline-block; width: 40px; height: 24px; border-radius: var(--radius-pill); cursor: pointer;
+  background: var(--color-border); transition: background 200ms ease;
+  min-height: var(--touch-target); padding: 10px 0;
+}
+.toggle[data-on="true"] { background: var(--color-accent); }
+.toggle-knob {
+  position: absolute; top: 10px; left: 2px; width: 20px; height: 20px;
+  border-radius: 50%; background: var(--color-text-muted); transition: left 200ms ease, background 200ms ease;
+}
+.toggle[data-on="true"] .toggle-knob { left: 18px; background: var(--color-bg); }
+
+/* Data table */
+.data-table { width: 100%; border-collapse: collapse; background: var(--color-bg); }
+.data-table th {
+  background: var(--color-surface); font-family: var(--font-prose);
+  font-size: var(--size-label); font-weight: var(--weight-semibold);
+  text-transform: uppercase; color: var(--color-text-muted);
+  padding: 0 var(--space-md); height: 40px; text-align: left;
+}
+.data-table td { font-family: var(--font-data); font-size: var(--size-data); color: var(--color-text); padding: 0 var(--space-md); height: 48px; border-bottom: 1px solid var(--color-border); }
+.data-table tr:nth-child(even) td { background: var(--color-surface-alt); }
+.data-table tr:hover td { background: var(--color-surface); }
+
+/* Waveform keyframe */
+@keyframes waveform-pulse {
+  from { transform: scaleY(0.15); }
+  to   { transform: scaleY(1); }
+}
