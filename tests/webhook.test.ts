@@ -1,74 +1,96 @@
 import { describe, expect, it } from 'bun:test'
 import crypto from 'node:crypto'
-import { verifyWhatsAppHmac } from '../src/lib/hmac'
+import { verifyTwilioSignature } from '../src/lib/hmac'
 
-const SECRET = 'test-secret-abc'
+const AUTH_TOKEN = 'test-twilio-auth-token'
+const WEBHOOK_URL = 'https://example.com/webhook/whatsapp'
 
-function sign(body: string): string {
-  const hex = crypto.createHmac('sha256', SECRET).update(body, 'utf8').digest('hex')
-  return `sha256=${hex}`
+/**
+ * Compute a valid Twilio signature for a given URL and params object.
+ * Mirrors the algorithm in verifyTwilioSignature exactly.
+ */
+function sign(url: string, params: Record<string, string>): string {
+  const sortedKeys = Object.keys(params).sort()
+  const paramStr = sortedKeys.map(k => `${k}${params[k]}`).join('')
+  const data = url + paramStr
+  return crypto.createHmac('sha256', AUTH_TOKEN).update(data, 'utf8').digest('base64')
 }
 
-describe('verifyWhatsAppHmac', () => {
+const VALID_PARAMS = {
+  From:       'whatsapp:+27821234567',
+  To:         'whatsapp:+14155238886',
+  Body:       'Hello',
+  MessageSid: 'SMtest0000000000000000000000000000',
+  NumMedia:   '0',
+}
+
+describe('verifyTwilioSignature', () => {
   it('accepts a valid signature', () => {
-    const body = '{"object":"whatsapp_business_account"}'
-    expect(verifyWhatsAppHmac(body, sign(body), SECRET)).toBe(true)
+    const sig = sign(WEBHOOK_URL, VALID_PARAMS)
+    expect(verifyTwilioSignature(WEBHOOK_URL, VALID_PARAMS, sig, AUTH_TOKEN)).toBe(true)
   })
 
-  it('rejects a tampered body', () => {
-    const body    = '{"object":"whatsapp_business_account"}'
-    const tampered = body + ' '
-    expect(verifyWhatsAppHmac(tampered, sign(body), SECRET)).toBe(false)
+  it('rejects a tampered param value', () => {
+    const sig = sign(WEBHOOK_URL, VALID_PARAMS)
+    const tampered = { ...VALID_PARAMS, Body: 'Tampered' }
+    expect(verifyTwilioSignature(WEBHOOK_URL, tampered, sig, AUTH_TOKEN)).toBe(false)
   })
 
   it('rejects a missing/empty signature', () => {
-    const body = '{"object":"whatsapp_business_account"}'
-    expect(verifyWhatsAppHmac(body, '', SECRET)).toBe(false)
+    expect(verifyTwilioSignature(WEBHOOK_URL, VALID_PARAMS, '', AUTH_TOKEN)).toBe(false)
   })
 
-  it('rejects a wrong secret', () => {
-    const body = '{"object":"whatsapp_business_account"}'
-    expect(verifyWhatsAppHmac(body, sign(body), 'wrong-secret')).toBe(false)
+  it('rejects a wrong auth token', () => {
+    const sig = sign(WEBHOOK_URL, VALID_PARAMS)
+    expect(verifyTwilioSignature(WEBHOOK_URL, VALID_PARAMS, sig, 'wrong-token')).toBe(false)
   })
 
-  it('rejects a signature without sha256= prefix', () => {
-    const body = '{"object":"whatsapp_business_account"}'
-    const hexOnly = crypto.createHmac('sha256', SECRET).update(body, 'utf8').digest('hex')
-    // strip prefix — should be treated as hex decode of empty → mismatch
-    expect(verifyWhatsAppHmac(body, hexOnly, SECRET)).toBe(false)
+  it('rejects when URL does not match (production vs staging)', () => {
+    const sig = sign(WEBHOOK_URL, VALID_PARAMS)
+    const differentUrl = 'https://staging.example.com/webhook/whatsapp'
+    expect(verifyTwilioSignature(differentUrl, VALID_PARAMS, sig, AUTH_TOKEN)).toBe(false)
+  })
+
+  it('accepts an empty params object (URL-only signature)', () => {
+    const emptyParams: Record<string, string> = {}
+    const sig = sign(WEBHOOK_URL, emptyParams)
+    expect(verifyTwilioSignature(WEBHOOK_URL, emptyParams, sig, AUTH_TOKEN)).toBe(true)
+  })
+
+  it('is insensitive to param insertion order — sorts keys', () => {
+    const reordered: Record<string, string> = {
+      NumMedia:   VALID_PARAMS.NumMedia,
+      From:       VALID_PARAMS.From,
+      MessageSid: VALID_PARAMS.MessageSid,
+      Body:       VALID_PARAMS.Body,
+      To:         VALID_PARAMS.To,
+    }
+    const sig = sign(WEBHOOK_URL, VALID_PARAMS)  // signed with sorted order
+    expect(verifyTwilioSignature(WEBHOOK_URL, reordered, sig, AUTH_TOKEN)).toBe(true)
   })
 })
 
-describe('WhatsApp payload parsing', () => {
-  it('identifies a text message event', () => {
-    const payload = {
-      entry: [{
-        changes: [{
-          value: {
-            messages: [{ id: 'wamid.001', from: '27821234567', type: 'text', text: { body: 'Hello' } }]
-          }
-        }]
-      }]
-    }
-    const value = payload.entry[0].changes[0].value
-    expect(value.messages).toBeDefined()
-    expect(value.messages[0].from).toBe('27821234567')
-    expect(value.messages[0].text.body).toBe('Hello')
+describe('Twilio payload field extraction', () => {
+  it('strips whatsapp: prefix from From field', () => {
+    const from = 'whatsapp:+27821234567'
+    const rawPhone = from.replace(/^whatsapp:/, '')
+    expect(rawPhone).toBe('+27821234567')
   })
 
-  it('identifies a status callback (should be discarded)', () => {
-    const payload = {
-      entry: [{
-        changes: [{
-          value: {
-            statuses: [{ id: 'wamid.001', status: 'delivered' }]
-          }
-        }]
-      }]
-    }
-    const value = payload.entry[0].changes[0].value
-    // No messages array → handler should return 200 and not enqueue
-    expect(value.statuses).toBeDefined()
-    expect((value as any).messages).toBeUndefined()
+  it('identifies a voice note by NumMedia > 0', () => {
+    const params = new URLSearchParams(
+      'From=whatsapp%3A%2B27821234567&Body=&MessageSid=SM001&NumMedia=1&MediaContentType0=audio%2Fogg'
+    )
+    const numMedia = parseInt(params.get('NumMedia') ?? '0', 10)
+    expect(numMedia).toBe(1)
+    expect(params.get('MediaContentType0')).toBe('audio/ogg')
+  })
+
+  it('identifies a text message by NumMedia = 0', () => {
+    const params = new URLSearchParams(
+      'From=whatsapp%3A%2B27821234567&Body=Hello&MessageSid=SM001&NumMedia=0'
+    )
+    const numMedia = parseInt(params.get('NumMedia') ?? '0', 10)
+    expect(numMedia).toBe(0)
   })
 })
