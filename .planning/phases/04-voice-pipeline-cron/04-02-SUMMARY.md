@@ -147,3 +147,13 @@ None — all data paths are wired. TTS calls are real (streamSpeech invokes Elev
 ---
 *Phase: 04-voice-pipeline-cron*
 *Completed: 2026-03-28*
+
+## Self-Check: PASSED
+
+- FOUND: src/routes/api.ts
+- FOUND: src/queue/worker.ts
+- FOUND: src/ws/connections.ts
+- FOUND: src/tts/elevenlabs.ts
+- FOUND: tests/voiceCommand.test.ts
+- FOUND: .planning/phases/04-voice-pipeline-cron/04-02-SUMMARY.md
+- Commits 8e119be, 137570a, 4607d45, b5dca94, eef1096 all verified in git log
