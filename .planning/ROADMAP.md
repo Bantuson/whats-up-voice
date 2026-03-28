@@ -15,7 +15,7 @@
 - [x] **Phase 3: Agent Intelligence** — Claude orchestrator + sub-agents, intent classification, contact management flows
  (completed 2026-03-28)
 - [x] **Phase 4: Voice Pipeline + Cron** — Full audio round-trip (STT → TTS → WebSocket), morning briefing scheduler
-- [x] **Phase 5: Tests + Frontend + Demo** — 85+ test cases, caregiver dashboard, episodic memory, demo polish (completed 2026-03-28)
+- [x] **Phase 5: Tests + Frontend + Demo** — 85+ test cases, caregiver dashboard, episodic memory, demo polish (completed 2026-03-28)
 
 ---
 
@@ -168,6 +168,7 @@ Plans:
 | 3. Agent Intelligence | 4/6 | In Progress|  |
 | 4. Voice Pipeline + Cron | 1/3 | In Progress|  |
 | 5. Tests + Frontend + Demo | 4/4 | Complete   | 2026-03-28 |
+| 6. Auth + Contacts Overhaul | 0/4 | Not started | - |
 
 ---
 
@@ -229,8 +230,15 @@ Plans:
 | MEM-01 | Phase 5 | Pending |
 | MEM-02 | Phase 5 | Pending |
 | MEM-03 | Phase 5 | Pending |
+| AUTH-01 | Phase 6 | Pending |
+| AUTH-02 | Phase 6 | Pending |
+| AUTH-03 | Phase 6 | Pending |
+| AUTH-04 | Phase 6 | Pending |
+| AUTH-05 | Phase 6 | Pending |
+| CONTACTS-01 | Phase 6 | Pending |
+| CONTACTS-02 | Phase 6 | Pending |
 
-**Total mapped:** 54/54 v0.1 requirements (including CONTACT-01-05 from heartbeat + agent layer) ✓
+**Total mapped:** 61/61 requirements (including Phase 6 auth/contacts additions) ✓
 **Unmapped:** 0 ✓
 
 ---
@@ -269,3 +277,25 @@ Plans:
 - [x] 05.1-02-PLAN.md — Test suite migration: Twilio signature tests, form-encoded handler tests, remove GET hub-verification tests, rename messageSid in dedup tests
 
 **Verification:** `bun run src/server.ts` starts with Twilio env vars; `bun test` 85+ passing 0 failing; `bunx tsc --noEmit` 0 errors; `grep -r "verifyWhatsAppHmac\|WHATSAPP_APP_SECRET\|waMessageId" src/ tests/` returns nothing.
+
+---
+
+### Phase 06: auth-contacts-overhaul
+
+**Goal:** Replace fake localStorage auth with a real two-step Supabase Auth + Twilio SMS OTP gate; add contact management UI to Setup; enforce caregiver identity throughout the data layer.
+
+**Depends on:** Phase 5 and Phase 05.1
+
+**Requirements covered:** AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, CONTACTS-01, CONTACTS-02
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Supabase migration 003_caregiver_auth.sql + backend OTP routes (send-otp, verify-otp) + SUPABASE_ANON_KEY env var
+- [ ] 06-02-PLAN.md — Frontend Supabase client singleton + appStore rewrite (caregiverId, session, isAuthenticated, signIn, verifyOtp, linkViUser, signOut)
+- [ ] 06-03-PLAN.md — Auth.tsx two-step gate + App.tsx auth guard + cleaned NAV_ITEMS + delete Login.tsx
+- [ ] 06-04-PLAN.md — Setup.tsx Section B: manual contact entry + native/CSV import + contact list with delete
+
+**Verification:** Visit frontend — unauthenticated access redirects to /auth; complete two-step auth flow; confirm caregivers and caregiver_links rows created in Supabase; sidebar shows 5 nav items (no Login/Setup); add contact via Setup Section B, confirm row appears in user_contacts; `bunx tsc --noEmit` 0 errors; `cd frontend && npm run build` exits 0.
+
+**Dependencies:** Phase 5 complete (frontend infrastructure), Phase 05.1 complete (Twilio credentials active).
