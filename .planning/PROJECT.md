@@ -24,7 +24,16 @@ A visually impaired South African can independently send and receive WhatsApp me
 - 9 tool handler functions with explicit `user_id` filtering across all Supabase queries (AGENT-03, AGENT-05, AGENT-06, AGENT-07, AGENT-08)
 - Contact name resolution via `.ilike('name', name)` — case-insensitive, no RPC dependency (CONTACT-02 through CONTACT-05)
 - Claude orchestrator with manual tool-use agentic loop — `POST /api/voice/command` wired (AGENT-01, AGENT-02)
-- CONTACT-01 (unknown number spoken digit-by-digit) deferred to Phase 4 — requires ElevenLabs TTS + pushInterrupt wiring
+
+**Validated in Phase 4: Voice Pipeline + Cron**
+- ElevenLabs TTS streaming wrapper — `eleven_flash_v2_5` (EN) / `eleven_multilingual_v2` (AF), `opus_48000_32` format, audio_start/audio_end framing (VOICE-03, VOICE-04)
+- Per-user WebSocket registry with `pushInterrupt` as sole audio delivery entry point (VOICE-04)
+- STT path: `POST /api/voice/command` accepts multipart audioBlob → Whisper `whisper-1` with SA language hint (VOICE-02)
+- Twilio voice note playback: `POST /api/voice/playback` streams CDN media to WebSocket with Basic auth (VOICE-05)
+- CONTACT-01 interrupt now delivers real TTS audio via `connections.pushInterrupt` — JSON stub removed (CONTACT-01)
+- BullMQ `upsertJobScheduler` for morning briefing (Mon–Fri 07:00) and evening digest (daily 18:00) (CRON-01, CRON-04)
+- Double-fire guard (55s window) in morning briefing processor (CRON-02)
+- Briefing spoken order: greeting → load shedding → weather → digest; priority contacts first (CRON-03)
 
 ### Active
 
@@ -110,4 +119,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-28 (Phase 3 complete — agent intelligence, 32/32 must-haves verified)*
+*Last updated: 2026-03-28 (Phase 4 complete — voice pipeline + cron, 25/25 must-haves verified)*
