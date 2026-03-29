@@ -52,7 +52,9 @@ export async function synthesiseSpeechForVoice(
 }
 
 // streamSpeech — streams MP3 chunks over WebSocket (navigation, translation, confirm_send)
-export async function streamSpeech(text: string, userId: string): Promise<void> {
+// autoListen: if true, sends { type: 'audio_end', autoListen: true } so the frontend
+// auto-starts recording immediately after the interrupt plays (hands-free reply flow).
+export async function streamSpeech(text: string, userId: string, autoListen = false): Promise<void> {
   try {
     const ws = getConnection(userId)
     if (!ws) {
@@ -83,7 +85,7 @@ export async function streamSpeech(text: string, userId: string): Promise<void> 
       if (done) break
       if (value?.length) ws.send(value)
     }
-    ws.send(JSON.stringify({ type: 'audio_end' }))
+    ws.send(JSON.stringify({ type: 'audio_end', autoListen }))
   } catch (err) {
     console.error(`[TTS] streamSpeech error for ${userId}:`, err)
   }

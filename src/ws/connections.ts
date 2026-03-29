@@ -18,11 +18,11 @@ export function removeConnection(userId: string): void {
   connections.delete(userId)
 }
 
-export async function pushInterrupt(userId: string, text: string): Promise<void> {
+export async function pushInterrupt(userId: string, text: string, autoListen = false): Promise<void> {
   if (!connections.has(userId)) {
     console.log(`[WS] pushInterrupt: no connection for ${userId}`)
     return
   }
-  const { streamSpeech } = await import('../tts/elevenlabs')
-  await streamSpeech(text, userId)
+  const { streamSpeech } = await import('../tts/openai-tts')
+  await streamSpeech(text, userId, autoListen)
 }

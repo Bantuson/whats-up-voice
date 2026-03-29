@@ -55,8 +55,8 @@ export async function processHeartbeat(job: { data: HeartbeatJobData }): Promise
 
   // PRIORITY 2: Priority contact flag
   if (contact?.is_priority === true) {
-    const spoken = `Priority message from ${contact.name}: ${messageBody ?? 'a voice note'}`
-    await pushInterrupt(userId, spoken)
+    const spoken = `Priority message from ${contact.name}: ${messageBody ?? 'a voice note'}. Say reply to ${contact.name} to respond.`
+    await pushInterrupt(userId, spoken, true)
     await logDecision(userId, messageLogId, 'interrupt', 'priority contact')
     return
   }
@@ -66,7 +66,7 @@ export async function processHeartbeat(job: { data: HeartbeatJobData }): Promise
   if (!contact) {
     const spokenPhone = formatPhoneForSpeech(phone)
     const spoken = `You have a message from an unknown number: ${spokenPhone}. Would you like to save this contact?`
-    await pushInterrupt(userId, spoken)
+    await pushInterrupt(userId, spoken, true)
     await logDecision(userId, messageLogId, 'interrupt', 'unknown number')
     return
   }
@@ -86,16 +86,21 @@ export async function processHeartbeat(job: { data: HeartbeatJobData }): Promise
   // Voice notes (audio/ogg) warrant an interrupt; text goes to batch
   // ------------------------------------------------------------------
   if (mediaType === 'audio' || mediaType === 'voice') {
-    const spoken = `Voice note from ${contact.name}`
-    await pushInterrupt(userId, spoken)
+    const spoken = `Voice note from ${contact.name}. Say play voice note to listen.`
+    await pushInterrupt(userId, spoken, true)
     await logDecision(userId, messageLogId, 'interrupt', 'voice note')
     return
   }
 
   // ------------------------------------------------------------------
-  // PRIORITY 6 (DEFAULT): Batch
-  // Known contact, normal session, text message → batch digest (HB-04)
+  // PRIORITY 6 (DEFAULT): Read message content directly + Batch
+  // Known contact, normal session, text message → read body aloud,
+  // then prompt for reply. Also log as batch for morning digest.
   // ------------------------------------------------------------------
+  const spoken = messageBody
+    ? `New message from ${contact.name}: ${messageBody}. Say reply to ${contact.name} to respond.`
+    : `New message from ${contact.name}. Say read messages to hear the attachment.`
+  await pushInterrupt(userId, spoken, true)
   await logDecision(userId, messageLogId, 'batch', 'default: text message from known contact')
 }
 

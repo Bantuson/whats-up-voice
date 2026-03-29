@@ -24,6 +24,15 @@ export interface ChatEntry {
 }
 
 // ---------------------------------------------------------------------------
+// PendingDraft — staged outbound message awaiting user confirmation
+// ---------------------------------------------------------------------------
+export interface PendingDraft {
+  to: string
+  toName?: string
+  body: string
+}
+
+// ---------------------------------------------------------------------------
 // AppStore interface
 // ---------------------------------------------------------------------------
 interface AppStore {
@@ -33,12 +42,14 @@ interface AppStore {
   session: Session | null           // Full Supabase session (JWT, expiry)
   isAuthenticated: boolean          // session !== null && userId !== null
   authLoading: boolean              // true until initAuth() resolves (prevents auth flash)
+  viUserName: string | null         // display name of the linked VI user
 
   // -- Agent / UI state --
   sessionPhase: string
   composingHint: string
   heartbeatLog: HeartbeatEvent[]
   chatLog: ChatEntry[]              // persists across navigation — cleared on sign-out
+  pendingDraft: PendingDraft | null // staged message awaiting confirmation
 
   // -- Auth methods --
   signIn: (email: string) => Promise<void>
@@ -51,6 +62,8 @@ interface AppStore {
   setSessionPhase: (phase: string) => void
   addHeartbeatEvent: (event: HeartbeatEvent) => void
   addChatEntry: (entry: Omit<ChatEntry, 'ts'>) => void
+  setPendingDraft: (draft: PendingDraft | null) => void
+  setViUserName: (name: string) => void
   subscribeToSSE: (token: string) => () => void
 }
 
@@ -84,6 +97,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   composingHint: '',
   heartbeatLog: [],
   chatLog: [],
+  pendingDraft: null,
+  viUserName: localStorage.getItem('voiceapp_user_name'),
 
   // --------------------------------------------------------------------------
   // initAuth — call once on app mount (in App.tsx useEffect)

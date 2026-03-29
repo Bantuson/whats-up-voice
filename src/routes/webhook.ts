@@ -14,23 +14,19 @@ export const webhookRouter = new Hono()
 // Twilio does NOT use a GET hub-verification step.
 webhookRouter.post('/whatsapp', async (c) => {
   // STEP 1: TWILIO SIGNATURE VERIFICATION
-  // rawBody is the raw application/x-www-form-urlencoded string captured by
-  // the middleware in server.ts. Parse with URLSearchParams for both
-  // signature validation and field extraction.
   const rawBody  = c.get('rawBody') as string
   const signature = c.req.header('X-Twilio-Signature') ?? ''
 
-  // Parse decoded params for signature validation
   const params    = new URLSearchParams(rawBody)
   const paramsObj: Record<string, string> = {}
   params.forEach((v, k) => { paramsObj[k] = v })
 
-  // Full URL is required for Twilio's HMAC — must match what Twilio sends to.
-  // Behind ngrok/any reverse proxy, reconstruct from forwarded headers so the
-  // protocol and host match what Twilio actually called (e.g. https://xxx.ngrok-free.app).
+  // Reconstruct public URL from forwarded headers (ngrok / reverse proxy)
   const proto = c.req.header('x-forwarded-proto') ?? (c.req.url.startsWith('https') ? 'https' : 'http')
   const host  = c.req.header('x-forwarded-host') ?? c.req.header('host') ?? new URL(c.req.url).host
   const url   = `${proto}://${host}${new URL(c.req.url).pathname}`
+
+  console.log(`[Webhook] POST /whatsapp — url=${url} sig=${signature.slice(0, 10)}… body=${rawBody.slice(0, 80)}`)
 
   const signatureValid = verifyTwilioSignature(
     url,
@@ -40,8 +36,14 @@ webhookRouter.post('/whatsapp', async (c) => {
   )
 
   if (!signatureValid) {
-    console.warn('[Webhook] Twilio signature verification failed')
-    return c.json({ error: 'Unauthorized' }, 401)
+    console.warn(`[Webhook] Signature FAILED — reconstructed url: ${url}`)
+    // In dev (no TWILIO_AUTH_TOKEN set or ngrok URL mismatch), skip verification
+    // to unblock testing. Remove this bypass before going to production.
+    if (process.env.NODE_ENV !== 'production' && process.env.SKIP_TWILIO_SIG === 'true') {
+      console.warn('[Webhook] SKIP_TWILIO_SIG=true — proceeding without signature check')
+    } else {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
   }
 
   // STEP 2: EXTRACT FIELDS
@@ -75,19 +77,35 @@ webhookRouter.post('/whatsapp', async (c) => {
   // STEP 4: NORMALISE SENDER PHONE (ISO-02)
   const phone = normaliseE164(rawPhone)
 
-  // STEP 5: UPSERT SENDER TO users (WA-03)
-  const { data: userRow, error: upsertErr } = await supabase
-    .from('users')
-    .upsert({ phone }, { onConflict: 'phone' })
-    .select('id')
-    .single()
+  // STEP 5: RESOLVE USER ID
+  // If the sender is a known contact of an app user, route to that app user.
+  // This handles the case where a contact (e.g. Fana) replies to a message sent
+  // by the app's AI — the webhook must notify the APP USER, not create a user for
+  // the contact. Falls back to upserting the sender as an app user (direct commands).
+  let userId: string
 
-  if (upsertErr || !userRow) {
-    console.error('[Webhook] User upsert failed:', upsertErr)
-    return c.json({ error: 'DB error' }, 500)
+  const { data: contactRow } = await supabase
+    .from('user_contacts')
+    .select('user_id')
+    .eq('phone', phone)
+    .limit(1)
+    .maybeSingle()
+
+  if (contactRow) {
+    console.log(`[Webhook] Sender ${phone} is a contact — routing to app user ${contactRow.user_id}`)
+    userId = contactRow.user_id
+  } else {
+    const { data: userRow, error: upsertErr } = await supabase
+      .from('users')
+      .upsert({ phone }, { onConflict: 'phone' })
+      .select('id')
+      .single()
+    if (upsertErr || !userRow) {
+      console.error('[Webhook] User upsert failed:', upsertErr)
+      return c.json({ error: 'DB error' }, 500)
+    }
+    userId = userRow.id
   }
-
-  const userId: string = userRow.id
 
   // NAVIGATION LOCATION UPDATE — if user is navigating and sends a location pin,
   // update their position and deliver next waypoint description.

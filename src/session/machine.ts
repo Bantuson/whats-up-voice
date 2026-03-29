@@ -3,7 +3,7 @@
 // Uses a plain Map — no XState, no external library (50KB overhead not justified for 5 states).
 //
 // Valid transitions:
-//   idle              → listening, translating, navigating
+//   idle              → listening, translating, navigating, composing
 //   listening         → composing, idle (on error/timeout), translating, navigating
 //   composing         → awaiting_approval, playing, idle (on error)
 //   awaiting_approval → playing, idle (on cancel/timeout)
@@ -11,7 +11,8 @@
 //   translating       → idle (stop command), translating (recursive — each utterance stays in mode)
 //   navigating        → idle, navigating, listening
 //
-// INVALID EXAMPLE: idle → awaiting_approval (throws — agent must compose before approval)
+// Pending message is persisted to Supabase user_profile.pending_message so the
+// confirmation flow survives server restarts (bun --watch, crashes).
 
 export type SessionPhase =
   | 'idle'
@@ -30,8 +31,8 @@ export interface ConversationTurn {
 export interface SessionState {
   phase: SessionPhase
   pendingMessage?: { to: string; toName?: string; body: string }
-  translationTarget?: string   // BCP-47 language code e.g. 'zu', 'xh', 'st', 'af', 'en'
-  detectedLanguage?: string    // from Whisper STT language detection
+  translationTarget?: string
+  detectedLanguage?: string
   navigationSession?: {
     destination: string
     waypoints: Array<{
@@ -53,8 +54,44 @@ export interface SessionState {
 
 const sessions = new Map<string, SessionState>()
 
+// ---------------------------------------------------------------------------
+// Supabase-backed pending message persistence — survives server restarts.
+// Only the pendingMessage is persisted; phase and history stay in-memory.
+// ---------------------------------------------------------------------------
+function persistPendingMessage(userId: string, msg: { to: string; toName?: string; body: string } | null): void {
+  import('../db/client').then(({ supabase }) => {
+    supabase
+      .from('user_profile')
+      .upsert({ user_id: userId, pending_message: msg }, { onConflict: 'user_id' })
+      .then(({ error }) => {
+        if (error) console.error('[Session] persistPendingMessage failed (run migration 005?):', error.message)
+        else console.log(`[Session] pendingMessage persisted for ${userId} — msg=${msg ? 'set' : 'cleared'}`)
+      })
+      .catch((err) => console.error('[Session] persistPendingMessage unexpected error:', err))
+  }).catch((err) => console.error('[Session] persistPendingMessage import error:', err))
+}
+
+export async function hydratePendingMessage(userId: string): Promise<void> {
+  if (sessions.has(userId)) return
+  try {
+    const { supabase } = await import('../db/client')
+    const { data } = await supabase
+      .from('user_profile')
+      .select('pending_message')
+      .eq('user_id', userId)
+      .single()
+    if (data?.pending_message) {
+      const state: SessionState = { phase: 'awaiting_approval', pendingMessage: data.pending_message, lastActivity: Date.now() }
+      sessions.set(userId, state)
+      console.log(`[Session] Hydrated pending message for ${userId} from Supabase`)
+    }
+  } catch (err) {
+    console.error('[Session] hydratePendingMessage failed (run migration 005?):', err)
+  }
+}
+
 const TRANSITIONS: Record<SessionPhase, SessionPhase[]> = {
-  idle:              ['listening', 'translating', 'navigating'],
+  idle:              ['listening', 'translating', 'navigating', 'composing'],
   listening:         ['composing', 'idle', 'translating', 'navigating'],
   composing:         ['awaiting_approval', 'playing', 'idle'],
   awaiting_approval: ['playing', 'idle'],
@@ -70,11 +107,7 @@ export function transition(userId: string, next: SessionPhase): void {
     throw new Error(`Invalid session transition for ${userId}: ${current} → ${next}`)
   }
   const existing = sessions.get(userId)
-  sessions.set(userId, {
-    ...(existing ?? {}),
-    phase: next,
-    lastActivity: Date.now(),
-  })
+  sessions.set(userId, { ...(existing ?? {}), phase: next, lastActivity: Date.now() })
 }
 
 export function getState(userId: string): SessionState {
@@ -91,10 +124,12 @@ export function setPendingMessage(
 ): void {
   const s = getState(userId)
   sessions.set(userId, { ...s, pendingMessage: msg, lastActivity: Date.now() })
+  persistPendingMessage(userId, msg)
 }
 
 export function clearSession(userId: string): void {
   sessions.delete(userId)
+  persistPendingMessage(userId, null)
 }
 
 export function setTranslationTarget(userId: string, targetLanguage: string): void {
@@ -125,7 +160,7 @@ export function clearNavigationSession(userId: string): void {
   sessions.set(userId, { ...s, navigationSession: undefined, lastActivity: Date.now() })
 }
 
-const MAX_HISTORY_TURNS = 10 // 5 back-and-forth exchanges
+const MAX_HISTORY_TURNS = 10
 
 export function appendConversationTurn(userId: string, userText: string, assistantText: string): void {
   const s = getState(userId)

@@ -34,10 +34,11 @@ export function Dashboard() {
   const [micError, setMicError]       = useState('')
   const [dash, setDash] = useState<DashboardData | null>(null)
   const chatEndRef = useRef<HTMLDivElement | null>(null)
-  const mediaRecorderRef  = useRef<MediaRecorder | null>(null)
-  const micChunksRef      = useRef<Blob[]>([])
-  const wsAudioChunks     = useRef<ArrayBuffer[]>([])
-  const setPhaseRef = useRef(setSessionPhase)
+  const mediaRecorderRef    = useRef<MediaRecorder | null>(null)
+  const micChunksRef        = useRef<Blob[]>([])
+  const wsAudioChunks       = useRef<ArrayBuffer[]>([])
+  const setPhaseRef         = useRef(setSessionPhase)
+  const startRecordingRef   = useRef<(() => void) | null>(null)
   const token = import.meta.env.VITE_API_TOKEN ?? ''
 
   // SSE subscription for live phase + heartbeat updates
@@ -71,16 +72,26 @@ export function Dashboard() {
         wsAudioChunks.current.push(event.data)
       } else if (typeof event.data === 'string') {
         try {
-          const msg = JSON.parse(event.data) as { type: string }
+          const msg = JSON.parse(event.data) as { type: string; autoListen?: boolean }
           if (msg.type === 'audio_start') {
             wsAudioChunks.current = []
             setPhaseRef.current('playing')
           } else if (msg.type === 'audio_end' && wsAudioChunks.current.length > 0) {
+            const shouldAutoListen = msg.autoListen === true
             const blob = new Blob(wsAudioChunks.current, { type: 'audio/mpeg' })
             const url = URL.createObjectURL(blob)
             const audio = new Audio(url)
             audio.play().catch(() => {})
-            audio.onended = () => { URL.revokeObjectURL(url); setPhaseRef.current('idle') }
+            audio.onended = () => {
+              URL.revokeObjectURL(url)
+              wsAudioChunks.current = []
+              if (shouldAutoListen) {
+                setPhaseRef.current('listening')
+                startRecordingRef.current?.()
+              } else {
+                setPhaseRef.current('idle')
+              }
+            }
             wsAudioChunks.current = []
           }
         } catch { /* non-JSON ping frames */ }
@@ -164,6 +175,9 @@ export function Dashboard() {
       setMicError('Microphone access denied.')
     }
   }
+
+  // Keep startRecordingRef current so the WebSocket auto-listen handler can call it
+  useEffect(() => { startRecordingRef.current = startRecording })
 
   const stopRecording = () => {
     mediaRecorderRef.current?.stop()

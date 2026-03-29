@@ -134,7 +134,7 @@ console.log('Server running on port 3000')
 // Logs the public URL and Twilio webhook URL to paste into the sandbox settings.
 if (process.env.NGROK_AUTHTOKEN) {
   import('@ngrok/ngrok').then(({ default: ngrok }) =>
-    ngrok.forward({ addr: 3000, authtoken_from_env: true })
+    ngrok.forward({ addr: 3000, authtoken: process.env.NGROK_AUTHTOKEN })
   ).then((listener) => {
     const publicUrl = listener.url()
     console.log(`[ngrok] Tunnel active: ${publicUrl}`)

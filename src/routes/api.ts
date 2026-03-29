@@ -16,7 +16,7 @@ import { generatePodcast, parsePodcastSegments, stitchPodcastAudio, scriptToPlai
 import { runOrchestrator } from '../agent/orchestrator'
 import { toolReadMessages } from '../tools/whatsapp'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
-import { getState, getPhase, clearSession, transition, setDetectedLanguage, appendConversationTurn, getConversationHistory } from '../session/machine'
+import { getState, getPhase, clearSession, transition, setDetectedLanguage, appendConversationTurn, getConversationHistory, hydratePendingMessage } from '../session/machine'
 import { supabase } from '../db/client'
 import { spokenError } from '../lib/errors'
 import { streamSpeech, synthesiseSpeech } from '../tts/openai-tts'
@@ -164,10 +164,15 @@ apiRouter.post('/voice/command', async (c) => {
       userId = body.userId
       transcript = body.transcript.trim()
     }
-  } catch {
+  } catch (err) {
+    console.error('[VoiceCommand] Request parsing / STT error:', err)
     return c.json({ error: 'Invalid request body' }, 400)
   }
 
+  // Restore pending message from Supabase if server restarted mid-confirmation
+  await hydratePendingMessage(userId)
+
+  console.log(`[VoiceCommand] transcript="${transcript}" userId=${userId}`)
   const intent = classifyIntent(transcript)
   const sessionPhase = getPhase(userId)
 
@@ -444,6 +449,7 @@ apiRouter.post('/voice/command', async (c) => {
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'unknown error'
     const isTimeout = msg.includes('aborted') || msg.includes('timeout')
+    console.error('[VoiceCommand] Orchestrator error:', err)
     return c.json({
       spoken: spokenError(isTimeout ? 'processing your request — it timed out' : 'processing your request'),
       action: 'error',
