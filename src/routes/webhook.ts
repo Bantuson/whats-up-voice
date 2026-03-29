@@ -62,6 +62,12 @@ webhookRouter.post('/whatsapp', async (c) => {
     ? (params.get('MediaUrl0') ?? null)
     : null
 
+  // DETECT LOCATION PIN MESSAGE (VI-NAV-02)
+  // Twilio sends location pins with Latitude and Longitude form fields
+  const latStr = params.get('Latitude')
+  const lngStr = params.get('Longitude')
+  const isLocationMessage = latStr !== null && lngStr !== null
+
   // STEP 4: NORMALISE SENDER PHONE (ISO-02)
   const phone = normaliseE164(rawPhone)
 
@@ -78,6 +84,23 @@ webhookRouter.post('/whatsapp', async (c) => {
   }
 
   const userId: string = userRow.id
+
+  // NAVIGATION LOCATION UPDATE — if user is navigating and sends a location pin,
+  // update their position and deliver next waypoint description.
+  // This is processed asynchronously (fire-and-forget) to keep webhook response fast.
+  if (isLocationMessage) {
+    const lat = parseFloat(latStr!)
+    const lng = parseFloat(lngStr!)
+    if (!isNaN(lat) && !isNaN(lng)) {
+      const { getPhase } = await import('../session/machine')
+      if (getPhase(userId) === 'navigating') {
+        const { updateLocation } = await import('../tools/navigation')
+        updateLocation(userId, lat, lng).catch((err) => {
+          console.error('[Webhook] navigation updateLocation error:', err)
+        })
+      }
+    }
+  }
 
   // STEP 6: PERSIST MESSAGE TO message_log (WA-05)
   // wa_message_id stores the Twilio MessageSid — column name unchanged in DB schema
