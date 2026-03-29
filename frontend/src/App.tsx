@@ -8,22 +8,16 @@
 import { useEffect }         from 'react'
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom'
 import { Auth }          from './pages/Auth'
-import { Setup }         from './pages/Setup'
 import { Dashboard }     from './pages/Dashboard'
-import { HeartbeatFeed } from './pages/HeartbeatFeed'
-import { Contacts }      from './pages/Contacts'
-import { Routines }      from './pages/Routines'
+import { Configure }     from './pages/Configure'
 import { Log }           from './pages/Log'
-import { Podcasts }      from './pages/Podcasts'
 import { useAppStore }   from './store/appStore'
 
+// Two primary modes: Live (voice view) and Configure (caregiver setup space).
+// All other pages (Feed, Contacts, Routines, Setup, Podcasts) are consolidated into Configure.
 const NAV_ITEMS = [
-  { path: '/dashboard', label: 'Dashboard', icon: '◈' },
-  { path: '/feed',      label: 'Feed',      icon: '◉' },
-  { path: '/contacts',  label: 'Contacts',  icon: '◎' },
-  { path: '/podcasts',  label: 'Podcasts',  icon: '▷' },
-  { path: '/routines',  label: 'Routines',  icon: '◷' },
-  { path: '/log',       label: 'Log',       icon: '◻' },
+  { path: '/dashboard', label: 'Live',      icon: '◈' },
+  { path: '/configure', label: 'Configure', icon: '⚙' },
 ]
 
 const STATE_LABELS: Record<string, string> = {
@@ -99,16 +93,16 @@ export default function App() {
           </div>
         </div>
 
-        {/* Sidebar footer: gear icon → /setup, sign-out button */}
+        {/* Sidebar footer: dev log link + sign-out */}
         <div style={{ marginTop: 'auto', padding: 'var(--space-md)', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
           <NavLink
-            to="/setup"
-            title="Settings"
+            to="/log"
+            title="Dev log"
             className={({ isActive }) => 'sidebar-link' + (isActive ? ' active' : '')}
-            style={{ flex: 1 }}
+            style={{ flex: 1, opacity: 0.5 }}
           >
-            <span className="sidebar-icon">⚙</span>
-            <span className="sidebar-label">Settings</span>
+            <span className="sidebar-icon">◻</span>
+            <span className="sidebar-label">Dev log</span>
           </NavLink>
           <button
             onClick={() => signOut()}
@@ -125,12 +119,14 @@ export default function App() {
       <main style={{ flex: 1, overflow: 'auto', padding: 'var(--space-xl)' }}>
         <Routes>
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/feed"      element={<HeartbeatFeed />} />
-          <Route path="/contacts"  element={<Contacts />} />
-          <Route path="/podcasts"  element={<Podcasts />} />
-          <Route path="/routines"  element={<Routines />} />
+          <Route path="/configure" element={<Configure />} />
           <Route path="/log"       element={<Log />} />
-          <Route path="/setup"     element={<Setup />} />
+          {/* Legacy routes redirect to the consolidated views */}
+          <Route path="/feed"      element={<Navigate to="/configure" replace />} />
+          <Route path="/contacts"  element={<Navigate to="/configure" replace />} />
+          <Route path="/routines"  element={<Navigate to="/configure" replace />} />
+          <Route path="/setup"     element={<Navigate to="/configure" replace />} />
+          <Route path="/podcasts"  element={<Navigate to="/configure" replace />} />
           <Route path="/auth"      element={<Navigate to="/dashboard" replace />} />
           <Route path="*"          element={<Navigate to="/dashboard" replace />} />
         </Routes>
