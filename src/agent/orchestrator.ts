@@ -9,6 +9,7 @@ import { toolReadMessages, toolSendMessage, toolResolveContact } from '../tools/
 import { toolGetContact, toolSaveContact, toolListContacts, toolSetPriority } from '../tools/contacts'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
 import { recallMemories } from '../memory/recall'
+import { generatePodcast } from '../tools/podcast'
 
 // Lazy singleton — created on first use so tests can mock '@anthropic-ai/sdk' before first call.
 let _anthropic: Anthropic | null = null
@@ -123,6 +124,18 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
       required: ['query'],
     },
   },
+  {
+    name: 'GeneratePodcast',
+    description: 'Generate and deliver a personalised podcast on any topic. Researches the topic via web search, synthesises a 2-5 minute natural-speech script, and streams it to the user via TTS. Use when user asks to hear about a topic, wants a podcast, or wants entertainment on a subject.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        topic: { type: 'string', description: 'The topic or subject for the podcast' },
+        shortVersion: { type: 'boolean', description: 'If true, generate a condensed 60-second version instead of full 2-5 minutes' },
+      },
+      required: ['topic'],
+    },
+  },
 ]
 
 async function executeTool(
@@ -152,6 +165,8 @@ async function executeTool(
       return toolGetWeather(signal)
     case 'WebSearch':
       return toolWebSearch(input.query as string, signal)
+    case 'GeneratePodcast':
+      return generatePodcast(input.topic as string, userId, (input.shortVersion as boolean) ?? false)
     default:
       return { error: `Unknown tool: ${name}` }
   }

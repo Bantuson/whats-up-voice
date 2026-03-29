@@ -24,6 +24,8 @@ export type FastPathIntent =
   | 'weather'
   | 'web_search'
   | 'message_digest'
+  | 'podcast_request'
+  | 'short_version'
 
 const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Confirmation loop — checked first (short utterances, no ambiguity)
@@ -39,10 +41,14 @@ const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   [/save (a )?contact|add (a )?contact|save .+ as (a )?contact|add .+ as (a )?contact/i, 'save_contact'],
   [/make .+ (a )?priority|set .+ as priority|priority contact/i, 'set_priority'],
   // Explicit search requests — before ambient queries to avoid load/weather keywords hijacking "find out about X"
-  [/search for|look up|google|find out|tell me about/i, 'web_search'],
+  [/search for|look up|google|find out/i, 'web_search'],
   // Ambient queries
   [/load.?shed|eskom|power cut|power outage|loadshed/i, 'load_shedding'],
   [/weather|temperature|rain|forecast|hot today|cold today|how warm|how cold/i, 'weather'],
+  // Podcast requests — after ambient queries so weather/load_shedding take precedence
+  [/tell me (something |a story |more )?(about|on)|make (me )?a podcast|i want to hear about|podcast about|tell me about/i, 'podcast_request'],
+  // Short version request — checked after confirm/cancel so "no" doesn't accidentally hit
+  [/short version|give me the short|summarise that|summarize that|shorter version/i, 'short_version'],
 ]
 
 /**

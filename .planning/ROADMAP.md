@@ -320,7 +320,7 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 06.1-01-PLAN.md — Generated Podcasts: generatePodcast tool + podcast_request/short_version classifier intents + orchestrator wiring
+- [x] 06.1-01-PLAN.md — Generated Podcasts: generatePodcast tool + podcast_request/short_version classifier intents + orchestrator wiring
 - [ ] 06.1-02-PLAN.md — Realtime Translation: activateTranslation/translateUtterance tools + translating session state + SA language TTS mapping
 - [ ] 06.1-03-PLAN.md — Verbose Navigation: startNavigation/updateLocation tools + navigating session state + webhook location detection + Google Maps Directions + Places API
 
