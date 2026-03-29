@@ -107,9 +107,11 @@ export async function streamSpeechInLanguage(text: string, userId: string, langu
 
     for await (const chunk of stream) {
       try {
-        ws.send(chunk)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ws.send(chunk as any)
       } catch {
-        ws.send(chunk.buffer)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ws.send((chunk as any).buffer)
       }
     }
 
