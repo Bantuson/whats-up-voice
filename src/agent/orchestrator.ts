@@ -10,6 +10,7 @@ import { toolGetContact, toolSaveContact, toolListContacts, toolSetPriority } fr
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
 import { recallMemories } from '../memory/recall'
 import { generatePodcast } from '../tools/podcast'
+import { activateTranslation, deactivateTranslation, translateUtterance } from '../tools/translation'
 
 // Lazy singleton — created on first use so tests can mock '@anthropic-ai/sdk' before first call.
 let _anthropic: Anthropic | null = null
@@ -136,6 +137,33 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
       required: ['topic'],
     },
   },
+  {
+    name: 'ActivateTranslation',
+    description: 'Start real-time translation mode. All subsequent user speech will be translated to the target language and spoken back. Use when user asks to translate to a specific language.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        targetLanguage: { type: 'string', description: 'BCP-47 language code: zu (Zulu), xh (Xhosa), st (Sesotho), af (Afrikaans), en (English), fr (French), etc.' },
+      },
+      required: ['targetLanguage'],
+    },
+  },
+  {
+    name: 'DeactivateTranslation',
+    description: 'Stop real-time translation mode and return to normal interaction.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'TranslateUtterance',
+    description: 'Translate a specific piece of text to the current translation target language and speak it aloud.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'The text to translate' },
+      },
+      required: ['text'],
+    },
+  },
 ]
 
 async function executeTool(
@@ -167,6 +195,12 @@ async function executeTool(
       return toolWebSearch(input.query as string, signal)
     case 'GeneratePodcast':
       return generatePodcast(input.topic as string, userId, (input.shortVersion as boolean) ?? false)
+    case 'ActivateTranslation':
+      return activateTranslation(userId, input.targetLanguage as string)
+    case 'DeactivateTranslation':
+      return deactivateTranslation(userId)
+    case 'TranslateUtterance':
+      return translateUtterance(userId, input.text as string)
     default:
       return { error: `Unknown tool: ${name}` }
   }

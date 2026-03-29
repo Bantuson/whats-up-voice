@@ -3,11 +3,12 @@
 // Uses a plain Map — no XState, no external library (50KB overhead not justified for 5 states).
 //
 // Valid transitions:
-//   idle              → listening
-//   listening         → composing, idle (on error/timeout)
+//   idle              → listening, translating
+//   listening         → composing, idle (on error/timeout), translating
 //   composing         → awaiting_approval, playing, idle (on error)
 //   awaiting_approval → playing, idle (on cancel/timeout)
-//   playing           → idle
+//   playing           → idle, translating
+//   translating       → idle (stop command), translating (recursive — each utterance stays in mode)
 //
 // INVALID EXAMPLE: idle → awaiting_approval (throws — agent must compose before approval)
 
@@ -17,21 +18,25 @@ export type SessionPhase =
   | 'composing'
   | 'awaiting_approval'
   | 'playing'
+  | 'translating'
 
 export interface SessionState {
   phase: SessionPhase
   pendingMessage?: { to: string; toName?: string; body: string }
+  translationTarget?: string   // BCP-47 language code e.g. 'zu', 'xh', 'st', 'af', 'en'
+  detectedLanguage?: string    // from Whisper STT language detection
   lastActivity: number
 }
 
 const sessions = new Map<string, SessionState>()
 
 const TRANSITIONS: Record<SessionPhase, SessionPhase[]> = {
-  idle:              ['listening'],
-  listening:         ['composing', 'idle'],
+  idle:              ['listening', 'translating'],
+  listening:         ['composing', 'idle', 'translating'],
   composing:         ['awaiting_approval', 'playing', 'idle'],
   awaiting_approval: ['playing', 'idle'],
-  playing:           ['idle'],
+  playing:           ['idle', 'translating'],
+  translating:       ['idle', 'translating'],
 }
 
 export function transition(userId: string, next: SessionPhase): void {
@@ -66,4 +71,19 @@ export function setPendingMessage(
 
 export function clearSession(userId: string): void {
   sessions.delete(userId)
+}
+
+export function setTranslationTarget(userId: string, targetLanguage: string): void {
+  const s = getState(userId)
+  sessions.set(userId, { ...s, translationTarget: targetLanguage, lastActivity: Date.now() })
+}
+
+export function clearTranslationTarget(userId: string): void {
+  const s = getState(userId)
+  sessions.set(userId, { ...s, translationTarget: undefined, detectedLanguage: undefined, lastActivity: Date.now() })
+}
+
+export function setDetectedLanguage(userId: string, language: string): void {
+  const s = getState(userId)
+  sessions.set(userId, { ...s, detectedLanguage: language, lastActivity: Date.now() })
 }

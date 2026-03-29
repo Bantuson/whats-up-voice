@@ -26,6 +26,8 @@ export type FastPathIntent =
   | 'message_digest'
   | 'podcast_request'
   | 'short_version'
+  | 'start_translation'
+  | 'stop_translation'
 
 const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Confirmation loop — checked first (short utterances, no ambiguity)
@@ -40,6 +42,9 @@ const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Contact management
   [/save (a )?contact|add (a )?contact|save .+ as (a )?contact|add .+ as (a )?contact/i, 'save_contact'],
   [/make .+ (a )?priority|set .+ as priority|priority contact/i, 'set_priority'],
+  // Translation session control — before search/podcast so "start translating" doesn't match other patterns
+  [/start translat|translat(e|ing) (to|into)|speak (in|to) (zulu|xhosa|sotho|sesotho|afrikaans|french|portuguese|swahili|english)|i need (to translate|translation)/i, 'start_translation'],
+  [/stop translat|end translat|exit translat|no more translat|stop interpreting/i, 'stop_translation'],
   // Explicit search requests — before ambient queries to avoid load/weather keywords hijacking "find out about X"
   [/search for|look up|google|find out/i, 'web_search'],
   // Ambient queries

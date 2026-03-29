@@ -16,10 +16,11 @@ import { generatePodcast } from '../tools/podcast'
 import { runOrchestrator } from '../agent/orchestrator'
 import { toolReadMessages } from '../tools/whatsapp'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
-import { getState, getPhase, clearSession, transition } from '../session/machine'
+import { getState, getPhase, clearSession, transition, setDetectedLanguage } from '../session/machine'
 import { supabase } from '../db/client'
 import { spokenError } from '../lib/errors'
 import { streamSpeech } from '../tts/elevenlabs'
+import { activateTranslation, deactivateTranslation, translateUtterance } from '../tools/translation'
 
 export const apiRouter = new Hono()
 
@@ -155,6 +156,12 @@ apiRouter.post('/voice/command', async (c) => {
       if (!transcript) {
         return c.json({ error: 'STT returned empty transcript' }, 422)
       }
+      // Store Whisper-detected language in session for translation bidirectionality
+      // result.language is present at runtime (Whisper returns it) but not in the OpenAI SDK type
+      const whisperResult = result as typeof result & { language?: string }
+      if (whisperResult.language) {
+        setDetectedLanguage(userId, whisperResult.language)
+      }
     } else {
       // Existing JSON text path (VOICE-01 — preserved exactly)
       const body = await c.req.json() as { userId?: string; transcript?: string; sessionId?: string }
@@ -181,6 +188,40 @@ apiRouter.post('/voice/command', async (c) => {
   if (intent === 'cancel') {
     clearUserState(userId)
     return deliverSpoken(c, userId, 'Message cancelled.', 'cancel')
+  }
+
+  // ------------------------------------------------------------------
+  // FAST PATH: stop_translation — deactivate translation session
+  // ------------------------------------------------------------------
+  if (intent === 'stop_translation') {
+    await deactivateTranslation(userId)
+    return deliverSpoken(c, userId, 'Translation mode stopped. Back to normal.', 'stop_translation')
+  }
+
+  // ------------------------------------------------------------------
+  // FAST PATH: start_translation — extract language + activate
+  // ------------------------------------------------------------------
+  if (intent === 'start_translation') {
+    // Extract language from transcript
+    const langMatch = transcript.match(/\b(zulu|xhosa|sotho|sesotho|afrikaans|french|portuguese|swahili|english)\b/i)
+    const langName = langMatch?.[1]?.toLowerCase() ?? ''
+    const LANG_CODE_MAP: Record<string, string> = {
+      zulu: 'zu', xhosa: 'xh', sotho: 'st', sesotho: 'st',
+      afrikaans: 'af', english: 'en', french: 'fr', portuguese: 'pt', swahili: 'sw',
+    }
+    const targetLanguage = LANG_CODE_MAP[langName] ?? langName
+    const result = await activateTranslation(userId, targetLanguage || 'en')
+    return deliverSpoken(c, userId, result.spokenConfirmation, 'start_translation')
+  }
+
+  // ------------------------------------------------------------------
+  // TRANSLATION MODE INTERCEPT: if session is translating and intent is not
+  // a control command, translate the utterance instead of normal processing
+  // ------------------------------------------------------------------
+  const currentState = getState(userId)
+  if (currentState.phase === 'translating' && intent === null) {
+    const translated = await translateUtterance(userId, transcript)
+    return c.json({ spoken: translated, action: 'translate', requiresConfirmation: false })
   }
 
   // ------------------------------------------------------------------
