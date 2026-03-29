@@ -237,8 +237,17 @@ Plans:
 | AUTH-05 | Phase 6 | Pending |
 | CONTACTS-01 | Phase 6 | Pending |
 | CONTACTS-02 | Phase 6 | Pending |
+| VI-PODCAST-01 | Phase 06.1 | Pending |
+| VI-PODCAST-02 | Phase 06.1 | Pending |
+| VI-PODCAST-03 | Phase 06.1 | Pending |
+| VI-TRANSLATE-01 | Phase 06.1 | Pending |
+| VI-TRANSLATE-02 | Phase 06.1 | Pending |
+| VI-TRANSLATE-03 | Phase 06.1 | Pending |
+| VI-NAV-01 | Phase 06.1 | Pending |
+| VI-NAV-02 | Phase 06.1 | Pending |
+| VI-NAV-03 | Phase 06.1 | Pending |
 
-**Total mapped:** 61/61 requirements (including Phase 6 auth/contacts additions) ✓
+**Total mapped:** 70/70 requirements (including Phase 06.1 VI sensory features) ✓
 **Unmapped:** 0 ✓
 
 ---
@@ -257,6 +266,8 @@ The following constraints from research are explicitly encoded in phase plans an
 | pgvector via `.rpc()` — PostgREST cannot use `<=>` | Phase 1, Plan 1 + Phase 5, Plan 2 | SQL function deployed in Phase 1; `supabase.rpc()` enforced in Phase 5 |
 | service_role bypasses RLS — explicit `user_id` filter required | Phase 1, Plan 3 + Phase 3, Plan 1 | Isolation helper in Phase 1; every tool query assertion in Phase 3 |
 | ElevenLabs OGG/Opus for WhatsApp voice notes | Phase 4, Plan 1 | `output_format: 'opus_48000_32'` set in client wrapper |
+| eleven_multilingual_v2 for non-English TTS | Phase 06.1, Plan 02 | selectModel returns multilingual for all non-English language codes |
+| Google Maps API key separate from existing env vars | Phase 06.1, Plan 01 | GOOGLE_MAPS_API_KEY documented in .env.example |
 
 ---
 
@@ -299,3 +310,18 @@ Plans:
 **Verification:** Visit frontend — unauthenticated access redirects to /auth; complete two-step auth flow; confirm caregivers and caregiver_links rows created in Supabase; sidebar shows 5 nav items (no Login/Setup); add contact via Setup Section B, confirm row appears in user_contacts; `bunx tsc --noEmit` 0 errors; `cd frontend && npm run build` exits 0.
 
 **Dependencies:** Phase 5 complete (frontend infrastructure), Phase 05.1 complete (Twilio credentials active).
+
+### Phase 06.1: VI user sensory features: generated podcasts, verbose navigation and realtime translation (INSERTED)
+
+**Goal:** Three voice-first sensory features for visually impaired users — generated audio podcasts on demand, realtime language translation for travel scenarios, and verbose GPS-narrated navigation with rich verbal environment descriptions.
+
+**Requirements**: VI-PODCAST-01, VI-PODCAST-02, VI-PODCAST-03, VI-TRANSLATE-01, VI-TRANSLATE-02, VI-TRANSLATE-03, VI-NAV-01, VI-NAV-02, VI-NAV-03
+**Depends on:** Phase 6
+**Plans:** 3 plans
+
+Plans:
+- [ ] 06.1-01-PLAN.md — Generated Podcasts: generatePodcast tool + podcast_request/short_version classifier intents + orchestrator wiring
+- [ ] 06.1-02-PLAN.md — Realtime Translation: activateTranslation/translateUtterance tools + translating session state + SA language TTS mapping
+- [ ] 06.1-03-PLAN.md — Verbose Navigation: startNavigation/updateLocation tools + navigating session state + webhook location detection + Google Maps Directions + Places API
+
+**Verification:** Voice "tell me something about Kaizer Chiefs" → 2-5 min spoken podcast delivered; voice "start translating to Zulu" → translation mode active; voice "help me get to Bree Street taxi rank" → verbal environment description delivered; send WhatsApp location pin while navigating → next waypoint description plays; voice "stop navigation" → session returns to idle; `bunx tsc --noEmit` 0 errors; `bun test` no regressions.
