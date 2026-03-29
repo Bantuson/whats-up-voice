@@ -317,11 +317,11 @@ Plans:
 
 **Requirements**: VI-PODCAST-01, VI-PODCAST-02, VI-PODCAST-03, VI-TRANSLATE-01, VI-TRANSLATE-02, VI-TRANSLATE-03, VI-NAV-01, VI-NAV-02, VI-NAV-03
 **Depends on:** Phase 6
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
 - [ ] 06.1-01-PLAN.md — Generated Podcasts: generatePodcast tool + podcast_request/short_version classifier intents + orchestrator wiring
 - [ ] 06.1-02-PLAN.md — Realtime Translation: activateTranslation/translateUtterance tools + translating session state + SA language TTS mapping
-- [ ] 06.1-03-PLAN.md — Verbose Navigation: startNavigation/updateLocation tools + navigating session state + webhook location detection + Google Maps Directions + Places API
+- [x] 06.1-03-PLAN.md — Verbose Navigation: startNavigation/updateLocation tools + navigating session state + webhook location detection + Google Maps Directions + Places API
 
 **Verification:** Voice "tell me something about Kaizer Chiefs" → 2-5 min spoken podcast delivered; voice "start translating to Zulu" → translation mode active; voice "help me get to Bree Street taxi rank" → verbal environment description delivered; send WhatsApp location pin while navigating → next waypoint description plays; voice "stop navigation" → session returns to idle; `bunx tsc --noEmit` 0 errors; `bun test` no regressions.
