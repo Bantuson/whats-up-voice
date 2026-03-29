@@ -322,6 +322,6 @@ Plans:
 Plans:
 - [x] 06.1-01-PLAN.md — Generated Podcasts: generatePodcast tool + podcast_request/short_version classifier intents + orchestrator wiring
 - [x] 06.1-02-PLAN.md — Realtime Translation: activateTranslation/translateUtterance tools + translating session state + SA language TTS mapping
-- [ ] 06.1-03-PLAN.md — Verbose Navigation: startNavigation/updateLocation tools + navigating session state + webhook location detection + Google Maps Directions + Places API
+- [x] 06.1-03-PLAN.md — Verbose Navigation: startNavigation/updateLocation tools + navigating session state + webhook location detection + Google Maps Directions + Places API
 
 **Verification:** Voice "tell me something about Kaizer Chiefs" → 2-5 min spoken podcast delivered; voice "start translating to Zulu" → translation mode active; voice "help me get to Bree Street taxi rank" → verbal environment description delivered; send WhatsApp location pin while navigating → next waypoint description plays; voice "stop navigation" → session returns to idle; `bunx tsc --noEmit` 0 errors; `bun test` no regressions.

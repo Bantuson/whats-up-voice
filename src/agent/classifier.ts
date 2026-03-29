@@ -28,6 +28,8 @@ export type FastPathIntent =
   | 'short_version'
   | 'start_translation'
   | 'stop_translation'
+  | 'start_navigation'
+  | 'stop_navigation'
 
 const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Confirmation loop — checked first (short utterances, no ambiguity)
@@ -42,6 +44,9 @@ const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Contact management
   [/save (a )?contact|add (a )?contact|save .+ as (a )?contact|add .+ as (a )?contact/i, 'save_contact'],
   [/make .+ (a )?priority|set .+ as priority|priority contact/i, 'set_priority'],
+  // Navigation control — before translation/search to avoid "help me get to X" matching other patterns
+  [/help me (get|go) to|navigate to|take me to|directions? to|how do i get to|find my way to/i, 'start_navigation'],
+  [/stop navigation|cancel navigation|end navigation|stop (guiding|directions)|i'?m here|i have arrived/i, 'stop_navigation'],
   // Translation session control — before search/podcast so "start translating" doesn't match other patterns
   [/start translat|translat(e|ing) (to|into)|speak (in|to) (zulu|xhosa|sotho|sesotho|afrikaans|french|portuguese|swahili|english)|i need (to translate|translation)/i, 'start_translation'],
   [/stop translat|end translat|exit translat|no more translat|stop interpreting/i, 'stop_translation'],

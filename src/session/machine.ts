@@ -3,12 +3,13 @@
 // Uses a plain Map — no XState, no external library (50KB overhead not justified for 5 states).
 //
 // Valid transitions:
-//   idle              → listening, translating
-//   listening         → composing, idle (on error/timeout), translating
+//   idle              → listening, translating, navigating
+//   listening         → composing, idle (on error/timeout), translating, navigating
 //   composing         → awaiting_approval, playing, idle (on error)
 //   awaiting_approval → playing, idle (on cancel/timeout)
-//   playing           → idle, translating
+//   playing           → idle, translating, navigating
 //   translating       → idle (stop command), translating (recursive — each utterance stays in mode)
+//   navigating        → idle, navigating, listening
 //
 // INVALID EXAMPLE: idle → awaiting_approval (throws — agent must compose before approval)
 
@@ -19,24 +20,41 @@ export type SessionPhase =
   | 'awaiting_approval'
   | 'playing'
   | 'translating'
+  | 'navigating'
 
 export interface SessionState {
   phase: SessionPhase
   pendingMessage?: { to: string; toName?: string; body: string }
   translationTarget?: string   // BCP-47 language code e.g. 'zu', 'xh', 'st', 'af', 'en'
   detectedLanguage?: string    // from Whisper STT language detection
+  navigationSession?: {
+    destination: string
+    waypoints: Array<{
+      stepIndex: number
+      instruction: string
+      startLat: number
+      startLng: number
+      endLat: number
+      endLng: number
+      distanceMetres: number
+      nearbyPlaces: string[]
+    }>
+    currentWaypointIndex: number
+    origin?: { lat: number; lng: number }
+  }
   lastActivity: number
 }
 
 const sessions = new Map<string, SessionState>()
 
 const TRANSITIONS: Record<SessionPhase, SessionPhase[]> = {
-  idle:              ['listening', 'translating'],
-  listening:         ['composing', 'idle', 'translating'],
+  idle:              ['listening', 'translating', 'navigating'],
+  listening:         ['composing', 'idle', 'translating', 'navigating'],
   composing:         ['awaiting_approval', 'playing', 'idle'],
   awaiting_approval: ['playing', 'idle'],
-  playing:           ['idle', 'translating'],
+  playing:           ['idle', 'translating', 'navigating'],
   translating:       ['idle', 'translating'],
+  navigating:        ['idle', 'navigating', 'listening'],
 }
 
 export function transition(userId: string, next: SessionPhase): void {
@@ -86,4 +104,17 @@ export function clearTranslationTarget(userId: string): void {
 export function setDetectedLanguage(userId: string, language: string): void {
   const s = getState(userId)
   sessions.set(userId, { ...s, detectedLanguage: language, lastActivity: Date.now() })
+}
+
+export function setNavigationSession(
+  userId: string,
+  nav: SessionState['navigationSession']
+): void {
+  const s = getState(userId)
+  sessions.set(userId, { ...s, navigationSession: nav, lastActivity: Date.now() })
+}
+
+export function clearNavigationSession(userId: string): void {
+  const s = getState(userId)
+  sessions.set(userId, { ...s, navigationSession: undefined, lastActivity: Date.now() })
 }

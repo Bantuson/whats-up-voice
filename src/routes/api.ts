@@ -21,6 +21,8 @@ import { supabase } from '../db/client'
 import { spokenError } from '../lib/errors'
 import { streamSpeech } from '../tts/elevenlabs'
 import { activateTranslation, deactivateTranslation, translateUtterance } from '../tools/translation'
+import { sanitiseForSpeech } from '../agent/sanitiser'
+import { startNavigation, stopNavigation } from '../tools/navigation'
 
 export const apiRouter = new Hono()
 
@@ -303,6 +305,51 @@ apiRouter.post('/voice/command', async (c) => {
   if (intent === 'short_version') {
     const spoken = await runOrchestrator(userId, 'Please give me a short version or summary of what you just told me.', AbortSignal.timeout(15_000))
     return deliverSpoken(c, userId, spoken, 'short_version')
+  }
+
+  // ------------------------------------------------------------------
+  // FAST PATH: stop_navigation — exit navigation session (VI-NAV-03)
+  // ------------------------------------------------------------------
+  if (intent === 'stop_navigation') {
+    await stopNavigation(userId)
+    return deliverSpoken(c, userId, 'Navigation stopped. You can ask me anything.', 'stop_navigation')
+  }
+
+  // ------------------------------------------------------------------
+  // FAST PATH: start_navigation — extract destination + begin route (VI-NAV-01)
+  // ------------------------------------------------------------------
+  if (intent === 'start_navigation') {
+    const destination = transcript
+      .replace(/^(help me (get|go) to|navigate to|take me to|directions? to|how do i get to|find my way to)\s*/i, '')
+      .trim()
+    if (!destination || destination.toLowerCase() === transcript.toLowerCase().trim()) {
+      return deliverSpoken(c, userId, 'Where would you like to go? Please say the destination.', 'navigation_prompt')
+    }
+    const result = await startNavigation(userId, destination)
+    if (!result.started) {
+      return deliverSpoken(c, userId, result.firstDescription, 'navigation_error')
+    }
+    return c.json({ spoken: result.firstDescription, action: 'navigation_started', requiresConfirmation: false })
+  }
+
+  // ------------------------------------------------------------------
+  // NAVIGATION INTERRUPTION INTERCEPT: if user speaks during navigation,
+  // pause, answer the question, then offer to resume (VI-NAV-03)
+  // ------------------------------------------------------------------
+  const navState = getState(userId)
+  if (navState.phase === 'navigating' && intent === null) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 8000)
+    let spoken: string
+    try {
+      const answer = await runOrchestrator(userId, transcript, controller.signal)
+      // Restore navigating phase after orchestrator may have changed it
+      try { transition(userId, 'navigating') } catch { /* ignore */ }
+      spoken = sanitiseForSpeech(`${answer} Say continue navigation to resume your route, or ask me anything else.`)
+    } finally {
+      clearTimeout(timer)
+    }
+    return c.json({ spoken, action: 'navigation_interrupted', requiresConfirmation: false })
   }
 
   // ------------------------------------------------------------------
