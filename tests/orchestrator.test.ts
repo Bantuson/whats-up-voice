@@ -173,14 +173,14 @@ describe('runOrchestrator', () => {
     expect(callArgs.system).toBe(ORCHESTRATOR_SYSTEM_PROMPT)
   })
 
-  // Test 9: SDK called with ALL_TOOLS (10 tools)
-  test('calls anthropic.messages.create with all 10 tools', async () => {
+  // Test 9: SDK called with ALL_TOOLS (13 tools — 10 original + 3 translation tools)
+  test('calls anthropic.messages.create with all 13 tools', async () => {
     mockMessagesCreate.mockImplementation(() => makeEndTurnResponse('OK'))
 
     await runOrchestrator(TEST_USER_ID, 'test', TEST_SIGNAL)
 
     const callArgs = mockMessagesCreate.mock.calls[0][0] as { tools: unknown[] }
-    expect(callArgs.tools).toHaveLength(10)
+    expect(callArgs.tools).toHaveLength(13)
   })
 
   // Test 10: initial message contains transcript
@@ -211,8 +211,8 @@ describe('runOrchestrator', () => {
 })
 
 describe('ALL_TOOLS', () => {
-  test('defines exactly 10 tools', () => {
-    expect(ALL_TOOLS).toHaveLength(10)
+  test('defines exactly 13 tools (10 original + 3 translation)', () => {
+    expect(ALL_TOOLS).toHaveLength(13)
   })
 
   test('includes all required tool names', () => {
@@ -227,6 +227,10 @@ describe('ALL_TOOLS', () => {
     expect(names).toContain('GetLoadShedding')
     expect(names).toContain('GetWeather')
     expect(names).toContain('WebSearch')
+    // Translation tools (VI-TRANSLATE-01, VI-TRANSLATE-02)
+    expect(names).toContain('ActivateTranslation')
+    expect(names).toContain('DeactivateTranslation')
+    expect(names).toContain('TranslateUtterance')
   })
 
   test('each tool has name, description, and valid input_schema', () => {
