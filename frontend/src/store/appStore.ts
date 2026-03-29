@@ -203,7 +203,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
 
     localStorage.setItem('voiceapp_user_id', json.userId)
-    set({ userId: json.userId, isAuthenticated: true })
+    if (name) localStorage.setItem('voiceapp_user_name', name)
+    set({ userId: json.userId, viUserName: name || null, isAuthenticated: true })
   },
 
   // --------------------------------------------------------------------------
@@ -212,17 +213,20 @@ export const useAppStore = create<AppStore>((set, get) => ({
   signOut: async () => {
     await supabase.auth.signOut()
     localStorage.removeItem('voiceapp_user_id')
-    set({ session: null, caregiverId: null, userId: null, isAuthenticated: false, chatLog: [] })
+    localStorage.removeItem('voiceapp_user_name')
+    set({ session: null, caregiverId: null, userId: null, isAuthenticated: false, chatLog: [], pendingDraft: null, viUserName: null })
   },
 
   // --------------------------------------------------------------------------
-  // Agent / UI methods — unchanged
+  // Agent / UI methods
   // --------------------------------------------------------------------------
   setSessionPhase: (phase) => set({ sessionPhase: phase }),
   addHeartbeatEvent: (event) =>
     set((s) => ({ heartbeatLog: [event, ...s.heartbeatLog].slice(0, 100) })),
   addChatEntry: (entry) =>
     set((s) => ({ chatLog: [...s.chatLog, { ...entry, ts: Date.now() }].slice(-50) })),
+  setPendingDraft: (draft) => set({ pendingDraft: draft }),
+  setViUserName: (name) => { localStorage.setItem('voiceapp_user_name', name); set({ viUserName: name }) },
 
   subscribeToSSE: (token) => {
     const backendBase = apiBase()

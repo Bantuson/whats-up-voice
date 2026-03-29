@@ -704,7 +704,7 @@ apiRouter.get('/dashboard', async (c) => {
 
   const areaId = process.env.ESKOMSEPUSH_AREA_ID ?? 'eskde-10-fourwaysext10cityofjohannesburggauteng'
 
-  const [weatherRes, loadRes, contactsRes, queueRes] = await Promise.allSettled([
+  const [weatherRes, loadRes, contactsRes, queueRes, userRes] = await Promise.allSettled([
     fetch(
       `https://api.openweathermap.org/data/2.5/weather?lat=-26.2041&lon=28.0473&units=metric&appid=${process.env.OPENWEATHER_API_KEY!}`,
       { signal: AbortSignal.timeout(5000) }
@@ -721,6 +721,7 @@ apiRouter.get('/dashboard', async (c) => {
       .eq('direction', 'in')
       .gte('created_at', new Date(Date.now() - 86_400_000).toISOString())
       .order('created_at', { ascending: false }),
+    supabase.from('users').select('name').eq('id', userId).single(),
   ])
 
   // Weather
@@ -761,7 +762,10 @@ apiRouter.get('/dashboard', async (c) => {
     queueMap.get(phone)!.count++
   }
 
+  const viUserName = userRes.status === 'fulfilled' ? ((userRes.value.data as { name?: string } | null)?.name ?? null) : null
+
   return c.json({
+    viUserName,
     weather,
     loadShedding,
     batchedCount: msgs.length,

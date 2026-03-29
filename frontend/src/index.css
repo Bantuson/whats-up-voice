@@ -456,11 +456,61 @@ html, body, #root {
 .queue-preview { font-size:12px; color:var(--mid); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .queue-badge { font-family:var(--mono); font-size:10px; color:var(--dim); }
 
+/* ── SKELETON LOADING ── */
+.skeleton-line {
+  background: linear-gradient(90deg, var(--bg3) 25%, var(--border2) 50%, var(--bg3) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  display: block;
+}
+
+/* ── CHAT ENTRY ENTRANCE ── */
+.chat-entry {
+  animation: chatSlideIn 0.22s ease-out both;
+}
+
+/* ── DRAFT CARD — live variant (real data present) ── */
+.draft-card--live { border-color: rgba(255,176,32,0.65); }
+.draft-card--live .draft-body { color: var(--white); }
+
+/* ── AUTO-LISTEN ORB — distinct ripple treatment ── */
+/* fires when agent spoke an interrupt and is waiting for hands-free reply */
+.orb-wrap.auto-listen.listening .orb-ring-1 {
+  border-color: rgba(0,232,122,0.5);
+  animation: spin1 2s linear infinite;
+}
+.orb-wrap.auto-listen.listening .orb-ring-2 {
+  border-color: rgba(0,232,122,0.65);
+  animation: spin2 1.2s linear infinite;
+}
+.orb-wrap.auto-listen.listening .orb-ring-3 {
+  border-color: rgba(0,232,122,0.35);
+  animation: spin1 3s linear infinite reverse;
+}
+.orb-wrap.auto-listen.listening .orb-inner {
+  animation: autoListenPulse 0.8s ease-in-out infinite;
+  background: rgba(0,232,122,0.22);
+  border-color: var(--green);
+}
+.orb-wrap.auto-listen.listening .orb-icon { color: var(--green); }
+
 /* ── KEYFRAMES ── */
 @keyframes spin1 { to { transform:rotate(360deg); } }
 @keyframes spin2 { to { transform:rotate(360deg); } }
 @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+@keyframes autoListenPulse {
+  0%,100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(0,232,122,0.4); }
+  50%     { transform: scale(1.14); box-shadow: 0 0 0 8px rgba(0,232,122,0); }
+}
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@keyframes chatSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 @keyframes waveform-pulse {
   from { transform: scaleY(0.15); }
   to   { transform: scaleY(1); }
