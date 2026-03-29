@@ -24,6 +24,8 @@ export type FastPathIntent =
   | 'weather'
   | 'web_search'
   | 'message_digest'
+  | 'start_navigation'
+  | 'stop_navigation'
 
 const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Confirmation loop — checked first (short utterances, no ambiguity)
@@ -38,6 +40,9 @@ const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Contact management
   [/save (a )?contact|add (a )?contact|save .+ as (a )?contact|add .+ as (a )?contact/i, 'save_contact'],
   [/make .+ (a )?priority|set .+ as priority|priority contact/i, 'set_priority'],
+  // Navigation control — before search/ambient to avoid "help me get to X" matching web_search
+  [/help me (get|go) to|navigate to|take me to|directions? to|how do i get to|find my way to/i, 'start_navigation'],
+  [/stop navigation|cancel navigation|end navigation|stop (guiding|directions)|i'?m here|i have arrived/i, 'stop_navigation'],
   // Explicit search requests — before ambient queries to avoid load/weather keywords hijacking "find out about X"
   [/search for|look up|google|find out|tell me about/i, 'web_search'],
   // Ambient queries

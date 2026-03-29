@@ -9,6 +9,7 @@ import { toolReadMessages, toolSendMessage, toolResolveContact } from '../tools/
 import { toolGetContact, toolSaveContact, toolListContacts, toolSetPriority } from '../tools/contacts'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
 import { recallMemories } from '../memory/recall'
+import { startNavigation, stopNavigation, describeWaypoint } from '../tools/navigation'
 
 // Lazy singleton — created on first use so tests can mock '@anthropic-ai/sdk' before first call.
 let _anthropic: Anthropic | null = null
@@ -123,6 +124,29 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
       required: ['query'],
     },
   },
+  {
+    name: 'StartNavigation',
+    description: 'Begin verbose navigation to a destination. Fetches walking route from Google Maps, enriches waypoints with nearby places, and delivers verbal environment descriptions as the user moves. Use when user asks for directions or help getting somewhere.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        destination: { type: 'string', description: 'The destination address or place name' },
+        originLat: { type: 'number', description: 'Optional starting latitude (from user GPS)' },
+        originLng: { type: 'number', description: 'Optional starting longitude (from user GPS)' },
+      },
+      required: ['destination'],
+    },
+  },
+  {
+    name: 'StopNavigation',
+    description: 'Stop the current navigation session and return to normal interaction.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'DescribeCurrentWaypoint',
+    description: 'Re-describe the current navigation waypoint. Use when user asks "where am I" or "what is around me" during navigation.',
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
 ]
 
 async function executeTool(
@@ -152,6 +176,21 @@ async function executeTool(
       return toolGetWeather(signal)
     case 'WebSearch':
       return toolWebSearch(input.query as string, signal)
+    case 'StartNavigation':
+      return startNavigation(userId, input.destination as string, input.originLat as number | undefined, input.originLng as number | undefined)
+    case 'StopNavigation':
+      return stopNavigation(userId)
+    case 'DescribeCurrentWaypoint': {
+      const { getState } = await import('../session/machine')
+      const navState = getState(userId)
+      if (!navState.navigationSession) return { error: 'No active navigation session' }
+      const wp = navState.navigationSession.waypoints[navState.navigationSession.currentWaypointIndex]
+      if (!wp) return { error: 'No current waypoint' }
+      const desc = await describeWaypoint(wp.instruction, wp.nearbyPlaces, wp.distanceMetres)
+      const { streamSpeech } = await import('../tts/elevenlabs')
+      await streamSpeech(desc, userId)
+      return { description: desc }
+    }
     default:
       return { error: `Unknown tool: ${name}` }
   }
