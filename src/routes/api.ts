@@ -12,6 +12,7 @@ import OpenAI from 'openai'
 export const heartbeatEmitter = new EventEmitter()
 export const agentStateEmitter = new EventEmitter()
 import { classifyIntent } from '../agent/classifier'
+import { generatePodcast } from '../tools/podcast'
 import { runOrchestrator } from '../agent/orchestrator'
 import { toolReadMessages } from '../tools/whatsapp'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
@@ -240,6 +241,27 @@ apiRouter.post('/voice/command', async (c) => {
     const signal = AbortSignal.timeout(5000)
     const spoken = await toolWebSearch(transcript, signal)
     return deliverSpoken(c, userId, spoken, 'fast_path')
+  }
+
+  // ------------------------------------------------------------------
+  // FAST PATH: podcast_request — research + synthesise + TTS (VI-PODCAST-01)
+  // ------------------------------------------------------------------
+  if (intent === 'podcast_request') {
+    transition(userId, 'listening')
+    // Extract topic from transcript — strip known trigger phrases
+    const topic = transcript
+      .replace(/^(tell me (something |a story |more )?(about|on)|make (me )?a podcast (about)?|i want to hear about|podcast about|tell me about)\s*/i, '')
+      .trim() || transcript
+    const spoken = await generatePodcast(topic, userId)
+    return deliverSpoken(c, userId, spoken, 'podcast')
+  }
+
+  // ------------------------------------------------------------------
+  // FAST PATH: short_version — re-synthesise condensed podcast (VI-PODCAST-02)
+  // ------------------------------------------------------------------
+  if (intent === 'short_version') {
+    const spoken = await runOrchestrator(userId, 'Please give me a short version or summary of what you just told me.', AbortSignal.timeout(15_000))
+    return deliverSpoken(c, userId, spoken, 'short_version')
   }
 
   // ------------------------------------------------------------------
