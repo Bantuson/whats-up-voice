@@ -20,8 +20,8 @@ interface EskomAreaResponse {
 }
 
 interface OpenWeatherResponse {
-  current: { temp: number; weather: Array<{ description: string }> }
-  daily: Array<{ temp: { max: number; min: number } }>
+  main: { temp: number; temp_min: number; temp_max: number }
+  weather: Array<{ description: string }>
 }
 
 export async function toolGetLoadShedding(signal: AbortSignal): Promise<string> {
@@ -48,16 +48,16 @@ export async function toolGetWeather(signal: AbortSignal): Promise<string> {
   const lon = 28.0473
   try {
     const res = await fetch(
-      `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,alerts&appid=${process.env.OPENWEATHER_API_KEY!}`,
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${process.env.OPENWEATHER_API_KEY!}`,
       { signal }
     )
     if (!res.ok) return 'I could not fetch the weather right now.'
     const data = await res.json() as OpenWeatherResponse
-    const temp = Math.round(data.current.temp)
-    const desc = data.current.weather[0].description
-    const high = Math.round(data.daily[0].temp.max)
-    const low  = Math.round(data.daily[0].temp.min)
-    return `It is currently ${temp} degrees with ${desc}. Today's high is ${high} and the low is ${low}.`
+    const temp = Math.round(data.main.temp)
+    const desc = data.weather[0].description
+    const high = Math.round(data.main.temp_max)
+    const low  = Math.round(data.main.temp_min)
+    return `It is currently ${temp}°C with ${desc}. Today's high is ${high}°C and the low is ${low}°C.`
   } catch {
     return 'I could not fetch the weather right now.'
   }

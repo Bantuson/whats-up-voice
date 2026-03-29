@@ -21,8 +21,8 @@ export function Contacts() {
   const loadContacts = async () => {
     const res = await fetch(`/api/contacts?userId=${userId}`, { headers })
     if (res.ok) {
-      const data = await res.json() as Contact[]
-      setContacts(data)
+      const data = await res.json() as { contacts?: Contact[] }
+      setContacts(data.contacts ?? [])
     }
   }
 

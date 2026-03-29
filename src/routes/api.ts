@@ -12,14 +12,14 @@ import OpenAI from 'openai'
 export const heartbeatEmitter = new EventEmitter()
 export const agentStateEmitter = new EventEmitter()
 import { classifyIntent } from '../agent/classifier'
-import { generatePodcast } from '../tools/podcast'
+import { generatePodcast, parsePodcastSegments, stitchPodcastAudio, scriptToPlainText } from '../tools/podcast'
 import { runOrchestrator } from '../agent/orchestrator'
 import { toolReadMessages } from '../tools/whatsapp'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
-import { getState, getPhase, clearSession, transition, setDetectedLanguage } from '../session/machine'
+import { getState, getPhase, clearSession, transition, setDetectedLanguage, appendConversationTurn, getConversationHistory } from '../session/machine'
 import { supabase } from '../db/client'
 import { spokenError } from '../lib/errors'
-import { streamSpeech } from '../tts/elevenlabs'
+import { streamSpeech, synthesiseSpeech } from '../tts/openai-tts'
 import { activateTranslation, deactivateTranslation, translateUtterance } from '../tools/translation'
 import { sanitiseForSpeech } from '../agent/sanitiser'
 import { startNavigation, stopNavigation } from '../tools/navigation'
@@ -74,6 +74,11 @@ function getOpenAI(): OpenAI {
   return _openai
 }
 
+// Emit a composing-phase hint to all connected SSE clients
+function emitHint(hint: string) {
+  agentStateEmitter.emit('phase', { phase: 'composing', hint })
+}
+
 // In-process no-match counter for three-strike approval reset (AGENT-05).
 // Must be cleared whenever clearSession() is called.
 const noMatchCounts = new Map<string, number>()
@@ -84,31 +89,14 @@ function clearUserState(userId: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// deliverSpoken — wire TTS after every spoken response (VOICE-03, VOICE-04)
-// Fires streamSpeech non-blocking so JSON response returns immediately.
-// Session transitions: playing (before TTS) → idle (after kicking off TTS).
+// deliverSpoken — returns JSON; frontend fetches /api/tts to play audio.
+// WebSocket (streamSpeech) is reserved for background pushes only
+// (navigation waypoints, translation, heartbeat interrupts).
 // ---------------------------------------------------------------------------
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function deliverSpoken(c: any, userId: string, spoken: string, action: string, rest: Record<string, unknown> = {}): Promise<Response> {
-  // Transition to playing — guard: some session phases may not allow it
-  try {
-    transition(userId, 'playing')
-  } catch {
-    // Session may be in a state that doesn't allow playing (e.g. awaiting_approval)
-    // Still deliver audio but do not mutate session state
-  }
-
-  // Fire TTS — do not await to keep response latency low; client receives JSON immediately
-  // and audio arrives via WebSocket independently
-  streamSpeech(spoken, userId).catch((err) => {
-    console.error(`[TTS] streamSpeech failed for ${userId}:`, err)
-  })
-
-  // Transition back to idle after kicking off TTS (non-blocking)
-  try {
-    transition(userId, 'idle')
-  } catch { /* ignore — session may already be idle */ }
-
+  try { transition(userId, 'playing') } catch { /* ignore — session may not allow playing */ }
+  try { transition(userId, 'idle')    } catch { /* ignore */ }
   return c.json({ spoken, action, requiresConfirmation: false, ...rest })
 }
 
@@ -158,6 +146,9 @@ apiRouter.post('/voice/command', async (c) => {
       if (!transcript) {
         return c.json({ error: 'STT returned empty transcript' }, 422)
       }
+      // Show transcript preview in composing hint
+      const preview = transcript.length > 60 ? transcript.slice(0, 60) + '…' : transcript
+      emitHint(`Heard: "${preview}"`)
       // Store Whisper-detected language in session for translation bidirectionality
       // result.language is present at runtime (Whisper returns it) but not in the OpenAI SDK type
       const whisperResult = result as typeof result & { language?: string }
@@ -180,8 +171,29 @@ apiRouter.post('/voice/command', async (c) => {
   const intent = classifyIntent(transcript)
   const sessionPhase = getPhase(userId)
 
+  // Emit intent-contextual hint so the composing card reflects what's happening
+  const INTENT_HINTS: Record<string, string> = {
+    confirm_send:      'Sending your message…',
+    cancel:            'Cancelling…',
+    stop_translation:  'Stopping translation…',
+    start_translation: 'Activating translation…',
+    load_shedding:     'Checking load shedding schedule…',
+    weather:           'Fetching current weather…',
+    read_messages:     'Reading your messages…',
+    web_search:        'Searching the web…',
+    podcast_request:   'Researching your topic…',
+    play_podcast:      'Finding your podcast…',
+    short_version:     'Condensing podcast…',
+    stop_navigation:   'Stopping navigation…',
+    start_navigation:  'Starting navigation…',
+  }
+  emitHint(intent ? (INTENT_HINTS[intent] ?? 'Processing…') : 'Thinking…')
+
   // ------------------------------------------------------------------
   // FAST PATH: confirm / cancel (approval loop — AGENT-05)
+  // Context-aware fallback: when already awaiting_approval, broaden the
+  // affirmative/negative detection so Whisper variations ("Yes, please.",
+  // "Yeah go ahead", "Yes I confirm") still route correctly.
   // ------------------------------------------------------------------
   if (intent === 'confirm_send') {
     return handleConfirmSend(c, userId)
@@ -190,6 +202,15 @@ apiRouter.post('/voice/command', async (c) => {
   if (intent === 'cancel') {
     clearUserState(userId)
     return deliverSpoken(c, userId, 'Message cancelled.', 'cancel')
+  }
+
+  // Broader approval detection — only fires when session is already awaiting confirmation
+  if (sessionPhase === 'awaiting_approval' && intent === null) {
+    const t = transcript.toLowerCase()
+    const isYes = /\b(yes|yeah|yep|yup|ok|okay|sure|confirm|correct|right|send it|go ahead|do it|please|please send|send the message|send that)\b/.test(t)
+    const isNo  = /\b(no|nope|cancel|stop|don't send|abort|never mind|change it|actually)\b/.test(t)
+    if (isYes) return handleConfirmSend(c, userId)
+    if (isNo)  { clearUserState(userId); return deliverSpoken(c, userId, 'Message cancelled.', 'cancel') }
   }
 
   // ------------------------------------------------------------------
@@ -290,13 +311,56 @@ apiRouter.post('/voice/command', async (c) => {
   // FAST PATH: podcast_request — research + synthesise + TTS (VI-PODCAST-01)
   // ------------------------------------------------------------------
   if (intent === 'podcast_request') {
-    transition(userId, 'listening')
     // Extract topic from transcript — strip known trigger phrases
     const topic = transcript
       .replace(/^(tell me (something |a story |more )?(about|on)|make (me )?a podcast (about)?|i want to hear about|podcast about|tell me about)\s*/i, '')
       .trim() || transcript
+    // generatePodcast: Tavily research → Claude synthesis → DB save → returns script
+    // Audio delivery is handled by the frontend via /api/tts (HTTP, reliable)
+    // No WebSocket call here — avoids triple-delivery (streamSpeech×2 + HTTP)
     const spoken = await generatePodcast(topic, userId)
-    return deliverSpoken(c, userId, spoken, 'podcast')
+    return c.json({ spoken, action: 'podcast', requiresConfirmation: false })
+  }
+
+  // ------------------------------------------------------------------
+  // FAST PATH: play_podcast — look up most recent matching podcast in DB (VI-PODCAST-03)
+  // ------------------------------------------------------------------
+  if (intent === 'play_podcast') {
+    // Extract optional topic keyword from transcript
+    const topicKeyword = transcript
+      .replace(/play (my |the |latest |recent )?(podcast|episode)|replay (podcast|episode)|listen to (my |the )?(podcast|episode)/i, '')
+      .replace(/\babout\b/i, '')
+      .trim()
+
+    let query = supabase
+      .from('generated_podcasts')
+      .select('id, topic, script')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (topicKeyword) {
+      query = supabase
+        .from('generated_podcasts')
+        .select('id, topic, script')
+        .eq('user_id', userId)
+        .ilike('topic', `%${topicKeyword}%`)
+        .order('created_at', { ascending: false })
+        .limit(1)
+    }
+
+    const { data: rows } = await query
+    const podcast = rows?.[0]
+    if (!podcast) {
+      const spoken = topicKeyword
+        ? `I don't have a podcast about ${topicKeyword} yet. Say tell me about ${topicKeyword} to generate one.`
+        : "You don't have any podcasts yet. Say tell me about a topic to generate one."
+      return c.json({ spoken, action: 'play_podcast', requiresConfirmation: false })
+    }
+
+    // Return plain-text script (strip host markers) so frontend TTS works without parsing
+    const spoken = scriptToPlainText(podcast.script as string)
+    return c.json({ spoken, action: 'play_podcast', podcastId: podcast.id as string, topic: podcast.topic as string, requiresConfirmation: false })
   }
 
   // ------------------------------------------------------------------
@@ -342,7 +406,9 @@ apiRouter.post('/voice/command', async (c) => {
     const timer = setTimeout(() => controller.abort(), 8000)
     let spoken: string
     try {
-      const answer = await runOrchestrator(userId, transcript, controller.signal)
+      const history = getConversationHistory(userId)
+      const answer = await runOrchestrator(userId, transcript, controller.signal, history)
+      appendConversationTurn(userId, transcript, answer)
       // Restore navigating phase after orchestrator may have changed it
       try { transition(userId, 'navigating') } catch { /* ignore */ }
       spoken = sanitiseForSpeech(`${answer} Say continue navigation to resume your route, or ask me anything else.`)
@@ -357,9 +423,11 @@ apiRouter.post('/voice/command', async (c) => {
   // message_digest, and all unrecognised transcripts (null fast-path)
   // ------------------------------------------------------------------
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 5000)
+  const timer = setTimeout(() => controller.abort(), 30_000)
   try {
-    const spoken = await runOrchestrator(userId, transcript, controller.signal)
+    const history = getConversationHistory(userId)
+    const spoken = await runOrchestrator(userId, transcript, controller.signal, history)
+    appendConversationTurn(userId, transcript, spoken)
     const state = getState(userId)
     const requiresConfirmation = state.phase === 'awaiting_approval'
     if (!requiresConfirmation) {
@@ -440,6 +508,263 @@ apiRouter.post('/voice/playback', async (c) => {
 })
 
 // ---------------------------------------------------------------------------
+// POST /api/tts — convert text to MP3 audio, return binary response
+// Body: { text: string, userId: string }
+// Used by frontend after /api/voice/command returns spoken text.
+// ---------------------------------------------------------------------------
+apiRouter.post('/tts', async (c) => {
+  let body: { text?: string; userId?: string }
+  try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
+  if (!body.text || !body.userId) return c.json({ error: 'text and userId are required' }, 400)
+  try {
+    const audio = await synthesiseSpeech(body.text, body.userId)
+    return c.body(audio, 200, {
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': String(audio.byteLength),
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[TTS] /api/tts error:', msg)
+    return c.json({ error: msg }, 500)
+  }
+})
+
+// ---------------------------------------------------------------------------
+// GET /api/contacts?userId= — list VI user's contacts
+// ---------------------------------------------------------------------------
+apiRouter.get('/contacts', async (c) => {
+  const userId = c.req.query('userId')
+  if (!userId) return c.json({ error: 'userId is required' }, 400)
+  const { data, error } = await supabase
+    .from('user_contacts')
+    .select('id, name, phone, is_priority')
+    .eq('user_id', userId)
+    .order('name')
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json({ contacts: data ?? [] })
+})
+
+// ---------------------------------------------------------------------------
+// POST /api/contacts — add a contact for VI user
+// ---------------------------------------------------------------------------
+apiRouter.post('/contacts', async (c) => {
+  let body: { userId?: string; name?: string; phone?: string }
+  try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
+  if (!body.userId || !body.name || !body.phone) {
+    return c.json({ error: 'userId, name and phone are required' }, 400)
+  }
+  if (!/^\+\d{10,15}$/.test(body.phone)) {
+    return c.json({ error: 'phone must be E.164 format e.g. +27831000000' }, 400)
+  }
+  const { data, error } = await supabase
+    .from('user_contacts')
+    .insert({ user_id: body.userId, name: body.name.trim(), phone: body.phone.trim() })
+    .select('id, name, phone, is_priority')
+    .single()
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json({ contact: data })
+})
+
+// ---------------------------------------------------------------------------
+// DELETE /api/contacts/:id — remove a contact
+// ---------------------------------------------------------------------------
+apiRouter.delete('/contacts/:id', async (c) => {
+  const id = c.req.param('id')
+  const { error } = await supabase.from('user_contacts').delete().eq('id', id)
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json({ deleted: true })
+})
+
+// ---------------------------------------------------------------------------
+// POST /api/settings — upsert VI user profile
+// Body: { userId, language, location, quietFrom, quietTo, morningBriefing }
+// ---------------------------------------------------------------------------
+apiRouter.post('/settings', async (c) => {
+  let body: { userId?: string; language?: string; location?: string; quietFrom?: string; quietTo?: string; morningBriefing?: boolean }
+  try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
+  if (!body.userId) return c.json({ error: 'userId is required' }, 400)
+  const { error } = await supabase
+    .from('user_profile')
+    .upsert({
+      user_id: body.userId,
+      language: body.language ?? 'en',
+      location: body.location ?? null,
+      quiet_hours_start: body.quietFrom ?? null,
+      quiet_hours_end:   body.quietTo   ?? null,
+      briefing_enabled:  body.morningBriefing ?? true,
+    }, { onConflict: 'user_id' })
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json({ saved: true })
+})
+
+// ---------------------------------------------------------------------------
+// GET /api/routines?userId= — list user routines
+// ---------------------------------------------------------------------------
+apiRouter.get('/routines', async (c) => {
+  const userId = c.req.query('userId')
+  if (!userId) return c.json({ error: 'userId is required' }, 400)
+  const { data, error } = await supabase
+    .from('routines')
+    .select('id, label, cron_expression, routine_type, enabled')
+    .eq('user_id', userId)
+    .order('created_at')
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json((data ?? []).map((r) => ({
+    id:      r.id,
+    label:   r.label ?? r.routine_type,
+    cron:    r.cron_expression,
+    type:    r.routine_type,
+    enabled: r.enabled,
+  })))
+})
+
+// ---------------------------------------------------------------------------
+// PATCH /api/contacts/:id/priority — toggle is_priority flag
+// ---------------------------------------------------------------------------
+apiRouter.patch('/contacts/:id/priority', async (c) => {
+  const id = c.req.param('id')
+  let body: { is_priority?: boolean }
+  try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
+  if (typeof body.is_priority !== 'boolean') return c.json({ error: 'is_priority (boolean) is required' }, 400)
+  const { error } = await supabase.from('user_contacts').update({ is_priority: body.is_priority }).eq('id', id)
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json({ updated: true })
+})
+
+// ---------------------------------------------------------------------------
+// PATCH /api/routines/:id — toggle routine enabled
+// Body: { enabled: boolean }
+// ---------------------------------------------------------------------------
+apiRouter.patch('/routines/:id', async (c) => {
+  const id = c.req.param('id')
+  let body: { enabled?: boolean }
+  try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
+  if (typeof body.enabled !== 'boolean') return c.json({ error: 'enabled (boolean) is required' }, 400)
+  const { error } = await supabase.from('routines').update({ enabled: body.enabled }).eq('id', id)
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json({ updated: true })
+})
+
+// ---------------------------------------------------------------------------
+// GET /api/podcasts?userId= — list persisted podcast scripts (newest first)
+// ---------------------------------------------------------------------------
+apiRouter.get('/podcasts', async (c) => {
+  const userId = c.req.query('userId')
+  if (!userId) return c.json({ error: 'userId is required' }, 400)
+  const { data, error } = await supabase
+    .from('generated_podcasts')
+    .select('id, topic, script, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(20)
+  if (error) return c.json({ error: error.message }, 500)
+  return c.json({ podcasts: data ?? [] })
+})
+
+// ---------------------------------------------------------------------------
+// GET /api/podcasts/:id/audio — two-voice stitched MP3 for a saved podcast.
+// Parses [THABO]/[NALEDI] markers and stitches ElevenLabs audio segments.
+// ---------------------------------------------------------------------------
+apiRouter.get('/podcasts/:id/audio', async (c) => {
+  const id = c.req.param('id')
+  const { data, error } = await supabase
+    .from('generated_podcasts')
+    .select('script')
+    .eq('id', id)
+    .single()
+  if (error || !data) return c.json({ error: 'Podcast not found' }, 404)
+
+  try {
+    const segments = parsePodcastSegments(data.script as string)
+    const audio = await stitchPodcastAudio(segments)
+    return c.body(audio, 200, {
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': String(audio.byteLength),
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[Podcast] audio stitch failed:', msg)
+    return c.json({ error: msg }, 500)
+  }
+})
+
+// ---------------------------------------------------------------------------
+// GET /api/dashboard?userId= — live dashboard data: weather, load shedding,
+// priority contacts, and incoming message queue.
+// ---------------------------------------------------------------------------
+apiRouter.get('/dashboard', async (c) => {
+  const userId = c.req.query('userId')
+  if (!userId) return c.json({ error: 'userId is required' }, 400)
+
+  const areaId = process.env.ESKOMSEPUSH_AREA_ID ?? 'eskde-10-fourwaysext10cityofjohannesburggauteng'
+
+  const [weatherRes, loadRes, contactsRes, queueRes] = await Promise.allSettled([
+    fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=-26.2041&lon=28.0473&units=metric&appid=${process.env.OPENWEATHER_API_KEY!}`,
+      { signal: AbortSignal.timeout(5000) }
+    ),
+    fetch(
+      `https://developer.sepush.co.za/business/2.0/area?id=${encodeURIComponent(areaId)}`,
+      { headers: { Token: process.env.ESKOMSEPUSH_API_KEY! }, signal: AbortSignal.timeout(5000) }
+    ),
+    supabase.from('user_contacts').select('name').eq('user_id', userId).eq('is_priority', true),
+    supabase
+      .from('message_log')
+      .select('from_phone, body, created_at')
+      .eq('user_id', userId)
+      .eq('direction', 'in')
+      .gte('created_at', new Date(Date.now() - 86_400_000).toISOString())
+      .order('created_at', { ascending: false }),
+  ])
+
+  // Weather
+  let weather: { temp: number | null; description: string | null } = { temp: null, description: null }
+  if (weatherRes.status === 'fulfilled' && weatherRes.value.ok) {
+    const d = await weatherRes.value.json() as { main: { temp: number }; weather: Array<{ description: string }> }
+    weather = { temp: Math.round(d.main.temp), description: d.weather[0]?.description ?? null }
+  }
+
+  // Load shedding
+  let loadShedding: { stage: string | null; time: string | null } = { stage: null, time: null }
+  if (loadRes.status === 'fulfilled' && loadRes.value.ok) {
+    const d = await loadRes.value.json() as { events?: Array<{ note: string; start: string; end: string }> }
+    const ev = d.events?.[0]
+    if (ev) {
+      const fmt = (iso: string) => new Date(iso).toLocaleTimeString('en-ZA', { hour: '2-digit', minute: '2-digit', hour12: false })
+      loadShedding = { stage: ev.note, time: `${fmt(ev.start)} – ${fmt(ev.end)}` }
+    }
+  }
+
+  // Priority contacts
+  const priorityRows = contactsRes.status === 'fulfilled' ? (contactsRes.value.data ?? []) : []
+
+  // Batch queue — group by sender
+  const msgs = queueRes.status === 'fulfilled' ? (queueRes.value.data ?? []) : []
+  const uniquePhones = [...new Set(msgs.map((m) => m.from_phone as string).filter(Boolean))]
+  const nameRows = uniquePhones.length > 0
+    ? (await supabase.from('user_contacts').select('name, phone').eq('user_id', userId).in('phone', uniquePhones)).data ?? []
+    : []
+  const phoneToName = Object.fromEntries(nameRows.map((r) => [r.phone as string, r.name as string]))
+
+  const queueMap = new Map<string, { name: string; preview: string; count: number }>()
+  for (const msg of msgs) {
+    const phone = msg.from_phone as string
+    if (!queueMap.has(phone)) {
+      queueMap.set(phone, { name: phoneToName[phone] ?? phone, preview: msg.body as string, count: 0 })
+    }
+    queueMap.get(phone)!.count++
+  }
+
+  return c.json({
+    weather,
+    loadShedding,
+    batchedCount: msgs.length,
+    priorityContacts: { count: priorityRows.length, names: priorityRows.map((r) => r.name as string) },
+    queue: [...queueMap.values()],
+  })
+})
+
+// ---------------------------------------------------------------------------
 // handleConfirmSend — executes the actual WhatsApp send after user says "yes"
 // ISO-01: message_log insert includes user_id
 // ---------------------------------------------------------------------------
@@ -471,9 +796,16 @@ async function handleConfirmSend(c: any, userId: string) {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: formBody.toString(),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(10_000),
       }
     )
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => `HTTP ${res.status}`)
+      console.error(`[ConfirmSend] Twilio error ${res.status}:`, errBody)
+      throw new Error(`Twilio ${res.status}: ${errBody}`)
+    }
+
     const json = await res.json() as { sid?: string }
     const wamid = json.sid
 
@@ -488,16 +820,12 @@ async function handleConfirmSend(c: any, userId: string) {
 
     clearUserState(userId)
     const name = toName ?? to
+    const spoken = `Message sent to ${name}.`
 
-    // Wire TTS for confirm_send (VOICE-04)
-    streamSpeech(`Message sent to ${name}.`, userId).catch(() => {})
-
-    return c.json({
-      spoken: `Message sent to ${name}.`,
-      action: 'confirm',
-      requiresConfirmation: false,
-    })
-  } catch {
+    return c.json({ spoken, action: 'confirm', requiresConfirmation: false })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('[ConfirmSend] Failed:', msg)
     return c.json({
       spoken: spokenError('sending your message'),
       action: 'error',

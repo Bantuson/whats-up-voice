@@ -14,13 +14,14 @@ import { HeartbeatFeed } from './pages/HeartbeatFeed'
 import { Contacts }      from './pages/Contacts'
 import { Routines }      from './pages/Routines'
 import { Log }           from './pages/Log'
+import { Podcasts }      from './pages/Podcasts'
 import { useAppStore }   from './store/appStore'
 
-// 5 core nav items — LOGIN and SETUP removed (per D-01 auth overhaul)
 const NAV_ITEMS = [
   { path: '/dashboard', label: 'Dashboard', icon: '◈' },
   { path: '/feed',      label: 'Feed',      icon: '◉' },
   { path: '/contacts',  label: 'Contacts',  icon: '◎' },
+  { path: '/podcasts',  label: 'Podcasts',  icon: '▷' },
   { path: '/routines',  label: 'Routines',  icon: '◷' },
   { path: '/log',       label: 'Log',       icon: '◻' },
 ]
@@ -35,6 +36,7 @@ const STATE_LABELS: Record<string, string> = {
 
 export default function App() {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated)
+  const authLoading     = useAppStore((s) => s.authLoading)
   const phase           = useAppStore((s) => s.sessionPhase)
   const initAuth        = useAppStore((s) => s.initAuth)
   const signOut         = useAppStore((s) => s.signOut)
@@ -45,6 +47,9 @@ export default function App() {
     initAuth().then((fn) => { cleanup = fn })
     return () => { cleanup?.() }
   }, [initAuth])
+
+  // Block render until initAuth resolves — prevents flash to /auth on page load
+  if (authLoading) return null
 
   // Pre-auth: show only the auth page (no sidebar)
   if (!isAuthenticated) {
@@ -122,6 +127,7 @@ export default function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/feed"      element={<HeartbeatFeed />} />
           <Route path="/contacts"  element={<Contacts />} />
+          <Route path="/podcasts"  element={<Podcasts />} />
           <Route path="/routines"  element={<Routines />} />
           <Route path="/log"       element={<Log />} />
           <Route path="/setup"     element={<Setup />} />

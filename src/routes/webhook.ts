@@ -25,8 +25,12 @@ webhookRouter.post('/whatsapp', async (c) => {
   const paramsObj: Record<string, string> = {}
   params.forEach((v, k) => { paramsObj[k] = v })
 
-  // Full URL is required for Twilio's HMAC — must match what Twilio sends to
-  const url = c.req.url
+  // Full URL is required for Twilio's HMAC — must match what Twilio sends to.
+  // Behind ngrok/any reverse proxy, reconstruct from forwarded headers so the
+  // protocol and host match what Twilio actually called (e.g. https://xxx.ngrok-free.app).
+  const proto = c.req.header('x-forwarded-proto') ?? (c.req.url.startsWith('https') ? 'https' : 'http')
+  const host  = c.req.header('x-forwarded-host') ?? c.req.header('host') ?? new URL(c.req.url).host
+  const url   = `${proto}://${host}${new URL(c.req.url).pathname}`
 
   const signatureValid = verifyTwilioSignature(
     url,

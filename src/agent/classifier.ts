@@ -30,6 +30,7 @@ export type FastPathIntent =
   | 'stop_translation'
   | 'start_navigation'
   | 'stop_navigation'
+  | 'play_podcast'
 
 const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Confirmation loop — checked first (short utterances, no ambiguity)
@@ -55,6 +56,8 @@ const FAST_PATH: Array<[RegExp, FastPathIntent]> = [
   // Ambient queries
   [/load.?shed|eskom|power cut|power outage|loadshed/i, 'load_shedding'],
   [/weather|temperature|rain|forecast|hot today|cold today|how warm|how cold/i, 'weather'],
+  // Play existing podcast — before podcast_request so "play my podcast about X" doesn't generate a new one
+  [/play (my |the |latest |recent )?(podcast|episode)|replay (podcast|episode)|listen to (my |the )?(podcast|episode)/i, 'play_podcast'],
   // Podcast requests — after ambient queries so weather/load_shedding take precedence
   [/tell me (something |a story |more )?(about|on)|make (me )?a podcast|i want to hear about|podcast about|tell me about/i, 'podcast_request'],
   // Short version request — checked after confirm/cancel so "no" doesn't accidentally hit

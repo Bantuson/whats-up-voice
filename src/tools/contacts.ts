@@ -8,9 +8,9 @@ export async function toolGetContact(userId: string, name: string): Promise<{ na
     .from('user_contacts')
     .select('name, phone, is_priority')
     .eq('user_id', userId)
-    .ilike('name', name)
-    .single()
-  return data ?? null
+    .ilike('name', `%${name}%`)
+    .limit(1)
+  return data?.[0] ?? null
 }
 
 export async function toolSaveContact(
@@ -43,7 +43,7 @@ export async function toolSetPriority(
     .from('user_contacts')
     .update({ is_priority: priority })
     .eq('user_id', userId)
-    .ilike('name', name)
+    .ilike('name', `%${name}%`)
     .select('name')
   return { updated: (data?.length ?? 0) > 0 }
 }

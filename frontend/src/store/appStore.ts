@@ -15,6 +15,15 @@ export interface HeartbeatEvent {
 }
 
 // ---------------------------------------------------------------------------
+// ChatEntry — persisted across navigation in the global store
+// ---------------------------------------------------------------------------
+export interface ChatEntry {
+  role: 'user' | 'agent'
+  text: string
+  ts: number
+}
+
+// ---------------------------------------------------------------------------
 // AppStore interface
 // ---------------------------------------------------------------------------
 interface AppStore {
@@ -23,21 +32,25 @@ interface AppStore {
   userId: string | null             // VI user UUID from caregiver_links
   session: Session | null           // Full Supabase session (JWT, expiry)
   isAuthenticated: boolean          // session !== null && userId !== null
+  authLoading: boolean              // true until initAuth() resolves (prevents auth flash)
 
-  // -- Agent / UI state (unchanged) --
+  // -- Agent / UI state --
   sessionPhase: string
+  composingHint: string
   heartbeatLog: HeartbeatEvent[]
+  chatLog: ChatEntry[]              // persists across navigation — cleared on sign-out
 
   // -- Auth methods --
   signIn: (email: string) => Promise<void>
   verifyOtp: (email: string, token: string) => Promise<void>
-  linkViUser: (phone: string, name: string, smsOtp: string) => Promise<void>
+  linkViUser: (phone: string, name: string) => Promise<void>
   signOut: () => Promise<void>
   initAuth: () => Promise<() => void>  // call on app mount; returns cleanup fn
 
-  // -- Agent / UI methods (unchanged) --
+  // -- Agent / UI methods --
   setSessionPhase: (phase: string) => void
   addHeartbeatEvent: (event: HeartbeatEvent) => void
+  addChatEntry: (entry: Omit<ChatEntry, 'ts'>) => void
   subscribeToSSE: (token: string) => () => void
 }
 
@@ -45,7 +58,7 @@ interface AppStore {
 // Helpers
 // ---------------------------------------------------------------------------
 const apiBase = (): string =>
-  (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:3000'
+  (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 
 const apiToken = (): string =>
   (import.meta.env.VITE_API_TOKEN as string | undefined) ?? ''
@@ -64,10 +77,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
   userId: null,
   session: null,
   isAuthenticated: false,
+  authLoading: true,
 
   // -- Initial agent/UI state --
   sessionPhase: 'idle',
+  composingHint: '',
   heartbeatLog: [],
+  chatLog: [],
 
   // --------------------------------------------------------------------------
   // initAuth — call once on app mount (in App.tsx useEffect)
@@ -79,27 +95,30 @@ export const useAppStore = create<AppStore>((set, get) => ({
     // Rehydrate existing session
     const { data: { session } } = await supabase.auth.getSession()
     if (session) {
+      const userId = localStorage.getItem('voiceapp_user_id')
       set({
         session,
         caregiverId: session.user.id,
-        // userId is loaded separately via linkViUser or by querying caregiver_links
-        // It may already be in localStorage from a previous linkViUser call
-        userId: localStorage.getItem('voiceapp_user_id'),
-        isAuthenticated: !!localStorage.getItem('voiceapp_user_id'),
+        userId,
+        isAuthenticated: !!userId,
+        authLoading: false,
       })
+    } else {
+      set({ authLoading: false })
     }
 
     // Listen for auth state changes (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
+        const userId = localStorage.getItem('voiceapp_user_id')
         set({
           session,
           caregiverId: session.user.id,
-          userId: localStorage.getItem('voiceapp_user_id'),
-          isAuthenticated: !!localStorage.getItem('voiceapp_user_id'),
+          userId,
+          isAuthenticated: !!userId,
         })
       } else {
-        set({ session: null, caregiverId: null, userId: null, isAuthenticated: false })
+        set({ session: null, caregiverId: null, userId: null, isAuthenticated: false, chatLog: [] })
         localStorage.removeItem('voiceapp_user_id')
       }
     })
@@ -138,32 +157,34 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   // --------------------------------------------------------------------------
-  // linkViUser — Step 2: send 4-digit SMS OTP to VI phone, then verify
-  // Calls backend POST /api/auth/send-otp → user enters OTP → POST /api/auth/verify-otp
-  // On success: stores userId in localStorage and sets isAuthenticated = true
+  // linkViUser — Step 2: register VI user by phone + name (no SMS OTP required)
+  // Caregiver is already verified via email OTP; they vouch for the VI user number.
+  // Calls POST /api/auth/link-vi-user → creates users + caregiver_links rows.
+  // On success: stores userId in localStorage and sets isAuthenticated = true.
   // --------------------------------------------------------------------------
-  linkViUser: async (phone: string, name: string, smsOtp: string) => {
+  linkViUser: async (phone: string, name: string) => {
     const state = get()
     if (!state.caregiverId || !state.session) {
       throw new Error('Caregiver must be authenticated before linking VI user')
     }
 
-    const res = await fetch(`${apiBase()}/api/auth/verify-otp`, {
+    const res = await fetch(`${apiBase()}/api/auth/link-vi-user`, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({
         phone,
-        otp: smsOtp,
         name,
         caregiverId: state.caregiverId,
         caregiverEmail: state.session.user.email ?? '',
       }),
     })
 
-    const json = await res.json() as { userId?: string; linked?: boolean; error?: string }
+    const text = await res.text()
+    let json: { userId?: string; linked?: boolean; error?: string } = {}
+    try { json = JSON.parse(text) } catch { /* non-JSON response (e.g. 401 from bearer middleware) */ }
 
     if (!res.ok || !json.userId) {
-      throw new Error(json.error ?? 'Failed to link VI user')
+      throw new Error(json.error ?? `Server error ${res.status}`)
     }
 
     localStorage.setItem('voiceapp_user_id', json.userId)
@@ -176,7 +197,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   signOut: async () => {
     await supabase.auth.signOut()
     localStorage.removeItem('voiceapp_user_id')
-    set({ session: null, caregiverId: null, userId: null, isAuthenticated: false })
+    set({ session: null, caregiverId: null, userId: null, isAuthenticated: false, chatLog: [] })
   },
 
   // --------------------------------------------------------------------------
@@ -185,6 +206,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   setSessionPhase: (phase) => set({ sessionPhase: phase }),
   addHeartbeatEvent: (event) =>
     set((s) => ({ heartbeatLog: [event, ...s.heartbeatLog].slice(0, 100) })),
+  addChatEntry: (entry) =>
+    set((s) => ({ chatLog: [...s.chatLog, { ...entry, ts: Date.now() }].slice(-50) })),
 
   subscribeToSSE: (token) => {
     const backendBase = apiBase()
@@ -196,8 +219,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
       set((s) => ({ heartbeatLog: [event, ...s.heartbeatLog].slice(0, 100) }))
     })
     agentStateES.addEventListener('agent-state', (e) => {
-      const { phase } = JSON.parse(e.data) as { phase: string }
-      set({ sessionPhase: phase })
+      const data = JSON.parse(e.data) as { phase: string; hint?: string }
+      set({ sessionPhase: data.phase, ...(data.hint !== undefined ? { composingHint: data.hint } : {}) })
     })
 
     return () => {

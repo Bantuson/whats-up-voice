@@ -2,39 +2,33 @@
 // Two-step auth gate. Always operated by the caregiver on behalf of the VI user.
 //
 // Step 1 — Caregiver identity (Supabase email OTP):
-//   a. Enter email → signIn(email) → Supabase sends 6-digit code to email
-//   b. Enter 6-digit code → verifyOtp(email, code) → caregiver session established
+//   a. Enter email → signIn(email) → Supabase sends 8-digit code to email
+//   b. Enter 8-digit code → verifyOtp(email, code) → caregiver session established
 //
-// Step 2 — VI user registration (Twilio SMS 4-digit OTP):
-//   a. Enter VI user phone + display name → POST /api/auth/send-otp → Twilio sends SMS
-//   b. Enter 4-digit code → linkViUser(phone, name, code) → caregiver_links row created
-//   c. Redirect to /dashboard
+// Step 2 — VI user registration (no SMS — caregiver vouches for the number):
+//   a. Enter VI user phone + display name → POST /api/auth/link-vi-user → caregiver_links row created
+//   b. Redirect to /dashboard
 //
 // Shown only when !isAuthenticated (App.tsx redirects here automatically).
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../store/appStore'
 
-type Step = 'email' | 'email-otp' | 'phone' | 'phone-otp'
-
-const apiBase = () =>
-  (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:3000'
-
-const apiToken = () =>
-  (import.meta.env.VITE_API_TOKEN as string | undefined) ?? ''
+type Step = 'email' | 'email-otp' | 'phone'
 
 export function Auth() {
   const navigate = useNavigate()
   const { signIn, verifyOtp, linkViUser } = useAppStore()
+  const caregiverId = useAppStore((s) => s.caregiverId)
 
-  const [step, setStep]       = useState<Step>('email')
-  const [email, setEmail]     = useState('')
+  // If caregiver session already exists, skip email OTP and go straight to VI user setup
+  const [step, setStep]         = useState<Step>(() => caregiverId ? 'phone' : 'email')
+  const [email, setEmail]       = useState('')
   const [emailOtp, setEmailOtp] = useState('')
-  const [phone, setPhone]     = useState('')
-  const [name, setName]       = useState('')
-  const [phoneOtp, setPhoneOtp] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
+  const [phone, setPhone]       = useState('')
+  const [name, setName]         = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -57,8 +51,8 @@ export function Auth() {
   const handleEmailOtpSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
-    if (!/^\d{6}$/.test(emailOtp.trim())) {
-      setError('Enter the 6-digit code from your email.')
+    if (!/^\d{8}$/.test(emailOtp.trim())) {
+      setError('Enter the 8-digit code from your email.')
       return
     }
     setLoading(true)
@@ -85,40 +79,10 @@ export function Auth() {
     }
     setLoading(true)
     try {
-      const res = await fetch(`${apiBase()}/api/auth/send-otp`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiToken()}`,
-        },
-        body: JSON.stringify({ phone: phone.trim() }),
-      })
-      const json = await res.json() as { sent?: boolean; error?: string }
-      if (!res.ok || !json.sent) {
-        setError(json.error ?? 'Failed to send SMS. Check the phone number and try again.')
-        return
-      }
-      setStep('phone-otp')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'SMS send failed. Try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handlePhoneOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    if (!/^\d{4}$/.test(phoneOtp.trim())) {
-      setError('Enter the 4-digit code sent to the VI user phone.')
-      return
-    }
-    setLoading(true)
-    try {
-      await linkViUser(phone.trim(), name.trim(), phoneOtp.trim())
+      await linkViUser(phone.trim(), name.trim())
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid code. Ask the VI user to check their SMS.')
+      setError(err instanceof Error ? err.message : 'Failed to save VI user. Try again.')
     } finally {
       setLoading(false)
     }
@@ -142,8 +106,7 @@ export function Auth() {
   const stepLabel: Record<Step, string> = {
     'email':     'Step 1 of 2 — Caregiver sign-in',
     'email-otp': 'Step 1 of 2 — Enter email code',
-    'phone':     'Step 2 of 2 — Register VI user',
-    'phone-otp': 'Step 2 of 2 — Verify VI user phone',
+    'phone':     caregiverId ? 'Register VI user' : 'Step 2 of 2 — Register VI user',
   }
 
   return (
@@ -184,14 +147,14 @@ export function Auth() {
         {step === 'email-otp' && (
           <form onSubmit={handleEmailOtpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
             <p style={{ fontFamily: 'var(--font-prose)', fontSize: 'var(--size-body)', color: 'var(--color-text)' }}>
-              Check <strong>{email}</strong> for a 6-digit code.
+              Check <strong>{email}</strong> for an 8-digit code.
             </p>
             <div>
-              <label className="field-label" htmlFor="emailOtp">6-digit code</label>
+              <label className="field-label" htmlFor="emailOtp">8-digit code</label>
               <input
                 id="emailOtp" type="text" className="field-input"
-                placeholder="000000"
-                maxLength={6}
+                placeholder="00000000"
+                maxLength={8}
                 value={emailOtp} onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, ''))}
                 autoComplete="one-time-code"
                 inputMode="numeric"
@@ -210,7 +173,7 @@ export function Auth() {
           </form>
         )}
 
-        {/* Step 2a — VI user phone + name */}
+        {/* Step 2 — VI user phone + name (no SMS verification) */}
         {step === 'phone' && (
           <form onSubmit={handlePhoneSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
             <p style={{ fontFamily: 'var(--font-prose)', fontSize: 'var(--size-body)', color: 'var(--color-text)' }}>
@@ -235,37 +198,7 @@ export function Auth() {
               />
             </div>
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Sending SMS…' : 'Send verification code'}
-            </button>
-          </form>
-        )}
-
-        {/* Step 2b — 4-digit SMS OTP */}
-        {step === 'phone-otp' && (
-          <form onSubmit={handlePhoneOtpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
-            <p style={{ fontFamily: 'var(--font-prose)', fontSize: 'var(--size-body)', color: 'var(--color-text)' }}>
-              A 4-digit code was sent to <strong>{phone}</strong>. Enter it below.
-            </p>
-            <div>
-              <label className="field-label" htmlFor="phoneOtp">4-digit code</label>
-              <input
-                id="phoneOtp" type="text" className="field-input"
-                placeholder="0000"
-                maxLength={4}
-                value={phoneOtp} onChange={(e) => setPhoneOtp(e.target.value.replace(/\D/g, ''))}
-                autoComplete="one-time-code"
-                inputMode="numeric"
-              />
-            </div>
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? 'Verifying…' : 'Complete setup'}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setStep('phone'); setPhoneOtp(''); setError('') }}
-              style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', fontFamily: 'var(--font-prose)', fontSize: 'var(--size-label)', cursor: 'pointer', textAlign: 'left' }}
-            >
-              Back
+              {loading ? 'Saving…' : 'Confirm'}
             </button>
           </form>
         )}

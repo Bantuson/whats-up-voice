@@ -47,12 +47,12 @@ export async function toolSendMessage(
   }
 }
 
-export async function toolResolveContact(userId: string, name: string): Promise<{ phone: string } | null> {
+export async function toolResolveContact(userId: string, name: string): Promise<{ phone: string; name: string } | null> {
   const { data } = await supabase
     .from('user_contacts')
-    .select('phone')
+    .select('phone, name')
     .eq('user_id', userId)
-    .ilike('name', name)
-    .single()
-  return data ?? null
+    .ilike('name', `%${name}%`)
+    .limit(1)
+  return data?.[0] ?? null
 }

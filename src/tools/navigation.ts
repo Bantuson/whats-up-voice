@@ -6,7 +6,7 @@
 // Interruptible: stopNavigation() resets session to idle.
 import Anthropic from '@anthropic-ai/sdk'
 import { transition, getState, setNavigationSession, clearNavigationSession } from '../session/machine'
-import { streamSpeech } from '../tts/elevenlabs'
+import { streamSpeech } from '../tts/openai-tts'
 import { sanitiseForSpeech } from '../agent/sanitiser'
 
 const GOOGLE_MAPS_API_KEY = () => process.env.GOOGLE_MAPS_API_KEY!

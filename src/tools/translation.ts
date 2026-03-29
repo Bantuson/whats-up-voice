@@ -5,7 +5,7 @@
 // SA language support: Zulu (zu), Xhosa (xh), Sesotho (st), Afrikaans (af), English (en).
 import Anthropic from '@anthropic-ai/sdk'
 import { transition, getState, setTranslationTarget, clearTranslationTarget } from '../session/machine'
-import { streamSpeechInLanguage } from '../tts/elevenlabs'
+import { streamSpeechInLanguage } from '../tts/openai-tts'
 import { sanitiseForSpeech } from '../agent/sanitiser'
 
 // BCP-47 code to full language name mapping for Claude prompts

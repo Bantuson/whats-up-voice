@@ -16,7 +16,6 @@ validateEnv()
 import { Hono } from 'hono'
 import { upgradeWebSocket, websocket } from 'hono/bun'
 import { cors } from 'hono/cors'
-import { bearerAuth } from 'hono/bearer-auth'
 import { healthRouter } from './routes/health'
 import { webhookRouter } from './routes/webhook'
 import { apiRouter } from './routes/api'
@@ -30,25 +29,28 @@ import { Worker as CronWorker } from 'bullmq'
 const app = new Hono()
 
 // Register BullMQ cron worker — processes morning_briefing and evening_digest jobs
-const cronWorker = new CronWorker(
-  'cron',
-  async (job) => {
-    if (job.name === 'morning_briefing') {
-      await processMorningBriefing(job as { data: { userId: string } })
-    } else if (job.name === 'evening_digest') {
-      // Evening digest reuses morning briefing logic (same data, different greeting)
-      await processMorningBriefing(job as { data: { userId: string } })
+// Wrapped in try/catch so a Redis outage at startup doesn't prevent the HTTP server from booting.
+let cronWorker: CronWorker | null = null
+try {
+  cronWorker = new CronWorker(
+    'cron',
+    async (job) => {
+      if (job.name === 'morning_briefing') {
+        await processMorningBriefing(job as { data: { userId: string } })
+      } else if (job.name === 'evening_digest') {
+        await processMorningBriefing(job as { data: { userId: string } })
+      }
+    },
+    {
+      connection: (await import('./queue/heartbeat')).redis,
+      concurrency: 3,
     }
-    // reminder type jobs: future phases handle custom reminder content
-  },
-  {
-    connection: (await import('./queue/heartbeat')).redis,
-    concurrency: 3,
-  }
-)
-
-cronWorker.on('completed', (job) => console.log(`[Cron Worker] Job completed: ${job.id}`))
-cronWorker.on('failed', (job, err) => console.error(`[Cron Worker] Job failed: ${job?.id}`, err))
+  )
+  cronWorker.on('completed', (job) => console.log(`[Cron Worker] Job completed: ${job.id}`))
+  cronWorker.on('failed', (job, err) => console.error(`[Cron Worker] Job failed: ${job?.id}`, err))
+} catch (err) {
+  console.error('[Cron Worker] Failed to start — Redis may be unavailable:', err)
+}
 
 // Sync all user routines at startup (idempotent — safe to run on every restart)
 syncUserRoutines().catch((err) => console.error('[Cron] syncUserRoutines failed at startup:', err))
@@ -63,14 +65,34 @@ app.use('/webhook/*', async (c, next) => {
 })
 
 // STEP 2: CORS — applies to all routes
+// Allow any localhost origin in dev; FRONTEND_ORIGIN pins it in production.
 app.use('*', cors({
-  origin: process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173',
-  allowMethods: ['GET', 'POST', 'OPTIONS'],
+  origin: (origin) => {
+    if (process.env.FRONTEND_ORIGIN) return process.env.FRONTEND_ORIGIN
+    if (!origin || origin.startsWith('http://localhost')) return origin
+    return null
+  },
+  allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
 }))
 
 // STEP 3: Bearer token auth on /api/* routes only
-// /health and /webhook/* are intentionally not protected
-app.use('/api/*', bearerAuth({ token: process.env.API_BEARER_TOKEN! }))
+// /health and /webhook/* are intentionally not protected.
+// SSE routes (/api/sse/*) accept token via ?token= query param because
+// EventSource does not support custom headers.
+app.use('/api/*', async (c, next) => {
+  const expected = process.env.API_BEARER_TOKEN!
+  // SSE routes: check ?token= query param
+  if (c.req.path.startsWith('/api/sse/')) {
+    const q = c.req.query('token')
+    if (q === expected) return next()
+    return c.json({ error: 'Unauthorized' }, 401)
+  }
+  // All other /api/* routes: standard Authorization: Bearer header
+  const auth = c.req.header('Authorization') ?? ''
+  const tok = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+  if (tok === expected) return next()
+  return c.json({ error: 'Unauthorized' }, 401)
+})
 
 // STEP 4: Register routes AFTER all middleware
 app.route('/health', healthRouter)
@@ -107,3 +129,16 @@ export default {
 }
 
 console.log('Server running on port 3000')
+
+// Optional ngrok tunnel — only starts if NGROK_AUTHTOKEN is set in env.
+// Logs the public URL and Twilio webhook URL to paste into the sandbox settings.
+if (process.env.NGROK_AUTHTOKEN) {
+  import('@ngrok/ngrok').then(({ default: ngrok }) =>
+    ngrok.forward({ addr: 3000, authtoken_from_env: true })
+  ).then((listener) => {
+    const publicUrl = listener.url()
+    console.log(`[ngrok] Tunnel active: ${publicUrl}`)
+    console.log(`[ngrok] Twilio webhook → ${publicUrl}/webhook/whatsapp`)
+    console.log(`[ngrok] Paste the webhook URL above into Twilio sandbox "When a message comes in" field`)
+  }).catch((err) => console.error('[ngrok] Failed to start tunnel:', err))
+}

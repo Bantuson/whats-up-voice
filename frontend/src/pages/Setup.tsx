@@ -19,7 +19,7 @@ interface Contact {
 // Helpers
 // ---------------------------------------------------------------------------
 const apiBase = () =>
-  (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:3000'
+  (import.meta.env.VITE_API_BASE as string | undefined) ?? ''
 
 const apiToken = () =>
   (import.meta.env.VITE_API_TOKEN as string | undefined) ?? ''

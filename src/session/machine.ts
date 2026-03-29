@@ -22,6 +22,11 @@ export type SessionPhase =
   | 'translating'
   | 'navigating'
 
+export interface ConversationTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export interface SessionState {
   phase: SessionPhase
   pendingMessage?: { to: string; toName?: string; body: string }
@@ -42,6 +47,7 @@ export interface SessionState {
     currentWaypointIndex: number
     origin?: { lat: number; lng: number }
   }
+  conversationHistory?: ConversationTurn[]
   lastActivity: number
 }
 
@@ -117,4 +123,21 @@ export function setNavigationSession(
 export function clearNavigationSession(userId: string): void {
   const s = getState(userId)
   sessions.set(userId, { ...s, navigationSession: undefined, lastActivity: Date.now() })
+}
+
+const MAX_HISTORY_TURNS = 10 // 5 back-and-forth exchanges
+
+export function appendConversationTurn(userId: string, userText: string, assistantText: string): void {
+  const s = getState(userId)
+  const history = s.conversationHistory ?? []
+  const updated = [
+    ...history,
+    { role: 'user' as const, content: userText },
+    { role: 'assistant' as const, content: assistantText },
+  ].slice(-MAX_HISTORY_TURNS)
+  sessions.set(userId, { ...s, conversationHistory: updated, lastActivity: Date.now() })
+}
+
+export function getConversationHistory(userId: string): ConversationTurn[] {
+  return getState(userId).conversationHistory ?? []
 }

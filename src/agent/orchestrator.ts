@@ -12,7 +12,7 @@ import { recallMemories } from '../memory/recall'
 import { generatePodcast } from '../tools/podcast'
 import { activateTranslation, deactivateTranslation, translateUtterance } from '../tools/translation'
 import { startNavigation, stopNavigation, describeWaypoint } from '../tools/navigation'
-import { getState } from '../session/machine'
+import { getState, type ConversationTurn } from '../session/machine'
 
 // Lazy singleton — created on first use so tests can mock '@anthropic-ai/sdk' before first call.
 let _anthropic: Anthropic | null = null
@@ -236,7 +236,7 @@ async function executeTool(
       const wp = navState.navigationSession.waypoints[navState.navigationSession.currentWaypointIndex]
       if (!wp) return { error: 'No current waypoint' }
       const desc = await describeWaypoint(wp.instruction, wp.nearbyPlaces, wp.distanceMetres)
-      const { streamSpeech } = await import('../tts/elevenlabs')
+      const { streamSpeech } = await import('../tts/openai-tts')
       await streamSpeech(desc, userId)
       return { description: desc }
     }
@@ -249,6 +249,7 @@ export async function runOrchestrator(
   userId: string,
   transcript: string,
   signal: AbortSignal,
+  conversationHistory: ConversationTurn[] = [],
 ): Promise<string> {
   // MEM-03: Recall top-5 relevant memories and inject into system prompt.
   let systemPrompt = ORCHESTRATOR_SYSTEM_PROMPT
@@ -262,7 +263,11 @@ export async function runOrchestrator(
     // Memory recall failure is non-fatal — continue without context
   }
 
-  const messages: MessageParam[] = [{ role: 'user', content: transcript }]
+  // Prepend in-session conversation history so Claude has multi-turn context.
+  const messages: MessageParam[] = [
+    ...conversationHistory.map((h) => ({ role: h.role, content: h.content } as MessageParam)),
+    { role: 'user', content: transcript },
+  ]
   let toolCallCount = 0
 
   while (toolCallCount < MAX_TOOL_CALLS) {
