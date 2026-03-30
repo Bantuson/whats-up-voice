@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".planning/logo.png" alt="what's up Voice" width="220"/>
+  <img src=".planning/logo.png" alt="what's up Voice" width="660"/>
 </p>
 
 # what's up Voice — AI Voice Companion for Visually Impaired South Africans
