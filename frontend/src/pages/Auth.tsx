@@ -89,11 +89,11 @@ export function Auth() {
   }
 
   const cardStyle: React.CSSProperties = {
-    width: 380,
+    width: 460,
     background: 'var(--color-surface)',
-    padding: 'var(--space-xl)',
     borderRadius: 'var(--radius-md)',
     border: '1px solid var(--color-border)',
+    overflow: 'hidden',
   }
 
   const wrapStyle: React.CSSProperties = {
@@ -101,6 +101,7 @@ export function Auth() {
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: '100vh',
+    background: 'var(--bg)',
   }
 
   const stepLabel: Record<Step, string> = {
@@ -112,12 +113,48 @@ export function Auth() {
   return (
     <div style={wrapStyle}>
       <div style={cardStyle}>
-        <h1 style={{ fontFamily: 'var(--font-data)', fontSize: 'var(--size-heading)', fontWeight: 600, color: 'var(--color-accent)', marginBottom: 'var(--space-sm)' }}>
-          VoiceApp
-        </h1>
-        <p style={{ fontFamily: 'var(--font-prose)', fontSize: 'var(--size-body)', color: 'var(--color-text-muted)', marginBottom: 'var(--space-2xl)' }}>
-          {stepLabel[step]}
-        </p>
+
+        {/* ── Brand header ── */}
+        <div style={{
+          background: '#0A0A0A',
+          borderBottom: '1px solid #1a1a1a',
+          padding: '32px 40px 28px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 24,
+        }}>
+          {/* Icon */}
+          <svg width="56" height="56" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+            <rect width="64" height="64" rx="16" fill="#0A0A0A"/>
+            <path d="M13 22 Q13 14 21 14 L43 14 Q51 14 51 22 L51 38 Q51 46 43 46 L34 46 L27 53 L27 46 L21 46 Q13 46 13 38 Z" fill="#0D1F14" stroke="#00E87A" strokeWidth="1.2" strokeOpacity="0.7"/>
+            <line x1="23" y1="30" x2="23" y2="30" stroke="#00E87A" strokeWidth="2.2" strokeLinecap="round" opacity="0.35"/>
+            <line x1="28" y1="25" x2="28" y2="35" stroke="#00E87A" strokeWidth="2.2" strokeLinecap="round" opacity="0.6"/>
+            <line x1="32" y1="21" x2="32" y2="39" stroke="#00E87A" strokeWidth="2.2" strokeLinecap="round"/>
+            <line x1="37" y1="25" x2="37" y2="35" stroke="#00E87A" strokeWidth="2.2" strokeLinecap="round" opacity="0.7"/>
+            <line x1="41" y1="28" x2="41" y2="32" stroke="#00E87A" strokeWidth="2.2" strokeLinecap="round" opacity="0.45"/>
+          </svg>
+
+          {/* Wordmark */}
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+            <span style={{ fontFamily: 'var(--font-prose)', fontWeight: 300, fontSize: 18, letterSpacing: '0.01em', color: '#888' }}>what's up</span>
+            <span style={{ fontFamily: 'var(--font-prose)', fontWeight: 700, fontSize: 34, letterSpacing: '-0.03em', color: '#00E87A', marginTop: -2 }}>Voice</span>
+            <span style={{ fontFamily: 'var(--font-data)', fontSize: 9, letterSpacing: '0.16em', textTransform: 'uppercase', color: '#333', marginTop: 5 }}>Audio-first · WhatsApp</span>
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: 1, height: 56, background: '#1e1e1e', flexShrink: 0, marginLeft: 4 }} />
+
+          {/* Tagline */}
+          <div style={{ fontFamily: 'var(--font-prose)', fontSize: 12, color: '#444', fontWeight: 300, letterSpacing: '0.01em', lineHeight: 1.7 }}>
+            Your voice.<br/>Your contacts.<br/>Zero screen.
+          </div>
+        </div>
+
+        {/* ── Form body ── */}
+        <div style={{ padding: '28px 40px 36px' }}>
+          <p style={{ fontFamily: 'var(--font-data)', fontSize: 11, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 'var(--space-xl)' }}>
+            {stepLabel[step]}
+          </p>
 
         {error && (
           <p style={{ color: 'var(--color-destructive)', fontFamily: 'var(--font-prose)', fontSize: 'var(--size-label)', marginBottom: 'var(--space-md)' }}>
@@ -202,6 +239,7 @@ export function Auth() {
             </button>
           </form>
         )}
+        </div>{/* /form body */}
       </div>
     </div>
   )

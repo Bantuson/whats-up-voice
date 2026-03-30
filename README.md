@@ -1,4 +1,8 @@
-# VoiceApp — AI Voice Companion for Visually Impaired South Africans
+<p align="center">
+  <img src=".planning/logo.png" alt="what's up Voice" width="220"/>
+</p>
+
+# what's up Voice — AI Voice Companion for Visually Impaired South Africans
 
 A voice-native AI assistant that lets visually impaired users manage their WhatsApp life, stay informed, and navigate the world — entirely through natural conversation. No screen, no touch, no sight required.
 
@@ -288,3 +292,15 @@ voice-app/
 | Frontend | React 19 + Vite + Zustand |
 | Queue / cron | BullMQ + Redis (optional) |
 | Dev tunnelling | ngrok |
+
+---
+
+## Demo
+
+<a href=".planning/demo.mp4">
+  <img src=".planning/logo.png" alt="▶ Watch demo" width="480" style="border-radius:8px"/>
+</a>
+
+**[▶ Watch the demo video](.planning/demo.mp4)**
+
+> Click the logo above or the link to play the demo (opens the MP4 directly in GitHub).

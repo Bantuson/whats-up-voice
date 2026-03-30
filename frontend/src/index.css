@@ -81,36 +81,32 @@ html, body, #root {
 .sidebar:hover { width: 200px; }
 
 .sidebar-logo {
-  padding: 20px 0 20px;
+  padding: 12px 0 12px 12px;
   border-bottom: 1px solid var(--border);
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding-left: 15px;
-  min-height: 68px;
-}
-.sidebar-logo-mark {
-  font-family: var(--mono);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--green);
-  letter-spacing: 0.04em;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
   overflow: hidden;
-  max-width: 18px;
-  transition: max-width 0.18s ease;
 }
-.sidebar:hover .sidebar-logo-mark { max-width: 160px; }
-.sidebar-logo-sub {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--dim);
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  margin-top: 3px;
+.sidebar-logo svg {
+  flex-shrink: 0;
+}
+.sidebar-logo-wordmark {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 300;
+  color: var(--mid);
+  white-space: nowrap;
   opacity: 0;
-  transition: opacity 0.12s ease;
+  transition: opacity 0.15s ease;
 }
-.sidebar:hover .sidebar-logo-sub { opacity: 1; }
+.sidebar-logo-wordmark strong {
+  font-weight: 700;
+  color: var(--green);
+}
+.sidebar:hover .sidebar-logo-wordmark { opacity: 1; }
 
 /* Nav */
 .sidebar-nav {
