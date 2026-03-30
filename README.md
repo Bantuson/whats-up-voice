@@ -297,10 +297,8 @@ voice-app/
 
 ## Demo
 
-<a href=".planning/demo.mp4">
-  <img src=".planning/logo.png" alt="▶ Watch demo" width="480" style="border-radius:8px"/>
+<a href="https://www.youtube.com/watch?v=4Akl5CRSo9k">
+  <img src=".planning/logo.png" alt="▶ Watch demo on YouTube" width="480"/>
 </a>
 
-**[▶ Watch the demo video](.planning/demo.mp4)**
-
-> Click the logo above or the link to play the demo (opens the MP4 directly in GitHub).
+**[▶ Watch the demo on YouTube](https://www.youtube.com/watch?v=4Akl5CRSo9k)**
