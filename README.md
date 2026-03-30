@@ -297,8 +297,8 @@ voice-app/
 
 ## Demo
 
-<a href="https://www.youtube.com/watch?v=4Akl5CRSo9k">
+<a href="https://www.youtube.com/watch?v=uliwzgvlrcw">
   <img src=".planning/logo.png" alt="▶ Watch demo on YouTube" width="480"/>
 </a>
 
-**[▶ Watch the demo on YouTube](https://www.youtube.com/watch?v=4Akl5CRSo9k)**
+**[▶ Watch the demo on YouTube](https://www.youtube.com/watch?v=uliwzgvlrcw)**
