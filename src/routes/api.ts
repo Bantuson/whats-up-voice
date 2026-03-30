@@ -14,7 +14,7 @@ export const agentStateEmitter = new EventEmitter()
 import { classifyIntent } from '../agent/classifier'
 import { generatePodcast, parsePodcastSegments, stitchPodcastAudio, scriptToPlainText } from '../tools/podcast'
 import { runOrchestrator } from '../agent/orchestrator'
-import { toolReadMessages } from '../tools/whatsapp'
+import { toolReadMessages, flushPendingReads } from '../tools/whatsapp'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
 import { getState, getPhase, clearSession, transition, setDetectedLanguage, appendConversationTurn, getConversationHistory, hydratePendingMessage } from '../session/machine'
 import { supabase } from '../db/client'
@@ -437,6 +437,8 @@ apiRouter.post('/voice/command', async (c) => {
     const history = getConversationHistory(userId)
     const spoken = await runOrchestrator(userId, transcript, controller.signal, history)
     appendConversationTurn(userId, transcript, spoken)
+    // Mark any messages staged by toolReadMessages as read now that they're being spoken
+    await flushPendingReads(userId)
     const state = getState(userId)
     const requiresConfirmation = state.phase === 'awaiting_approval'
     if (!requiresConfirmation) {

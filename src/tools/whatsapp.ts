@@ -4,25 +4,36 @@ import { supabase } from '../db/client'
 import { transition, setPendingMessage } from '../session/machine'
 import { formatPhoneForSpeech } from '../lib/phone'
 
+// Staging area: IDs fetched by toolReadMessages but not yet spoken aloud.
+// The API route calls flushPendingReads(userId) after the TTS response is dispatched,
+// mirroring the heartbeat worker pattern (mark read = audio sent to user).
+const pendingReads = new Map<string, string[]>()
+
+export async function flushPendingReads(userId: string): Promise<void> {
+  const ids = pendingReads.get(userId)
+  if (!ids || ids.length === 0) return
+  pendingReads.delete(userId)
+  await supabase
+    .from('message_log')
+    .update({ read_at: new Date().toISOString() })
+    .in('id', ids)
+    .eq('user_id', userId)
+}
+
 export async function toolReadMessages(userId: string, limit = 5): Promise<string> {
   const { data, error } = await supabase
     .from('message_log')
     .select('id, from_phone, body, created_at, direction')
     .eq('user_id', userId)
     .eq('direction', 'in')
-    .is('read_at', null)  // Only unread messages — prevents re-reading already-heard messages
+    .is('read_at', null)  // Only unread — prevents re-reading already-heard messages
     .order('created_at', { ascending: false })
     .limit(limit)
 
   if (error || !data || data.length === 0) return 'You have no new messages.'
 
-  // Mark all fetched messages as read immediately
-  const ids = data.map((m) => m.id as string)
-  await supabase
-    .from('message_log')
-    .update({ read_at: new Date().toISOString() })
-    .in('id', ids)
-    .eq('user_id', userId)
+  // Stage IDs — will be marked read only when the spoken response is dispatched
+  pendingReads.set(userId, data.map((m) => m.id as string))
 
   const lines: string[] = []
   for (const msg of data) {
