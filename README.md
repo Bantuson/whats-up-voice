@@ -112,7 +112,8 @@ The caregiver (family member, support worker) gets a live monitoring dashboard: 
 
 ```bash
 git clone <repo-url>
-cd voice-app
+cd whats-up-voice
+
 
 # Backend dependencies
 bun install
