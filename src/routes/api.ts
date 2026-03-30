@@ -642,6 +642,43 @@ apiRouter.patch('/contacts/:id/priority', async (c) => {
 })
 
 // ---------------------------------------------------------------------------
+// POST /api/routines — create a new user routine
+// Body: { userId, routineType, cronExpression, label }
+// ---------------------------------------------------------------------------
+apiRouter.post('/routines', async (c) => {
+  let body: { userId?: string; routineType?: string; cronExpression?: string; label?: string }
+  try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
+  if (!body.userId || !body.routineType || !body.cronExpression) {
+    return c.json({ error: 'userId, routineType and cronExpression are required' }, 400)
+  }
+  const { data, error } = await supabase
+    .from('routines')
+    .insert({
+      user_id: body.userId,
+      routine_type: body.routineType,
+      cron_expression: body.cronExpression,
+      label: body.label ?? body.routineType,
+      enabled: true,
+    })
+    .select('id, label, cron_expression, routine_type, enabled')
+    .single()
+  if (error) return c.json({ error: error.message }, 500)
+
+  // Register with BullMQ immediately (non-fatal if Redis unavailable)
+  try {
+    const { getCronQueue } = await import('../cron/routines')
+    const queue = await getCronQueue()
+    await queue.upsertJobScheduler(
+      `reminder:${body.userId}:${data.id}`,
+      { pattern: body.cronExpression },
+      { name: 'reminder', data: { userId: body.userId, routineId: data.id }, opts: { attempts: 1 } }
+    )
+  } catch { /* Redis unavailable — will sync on restart */ }
+
+  return c.json({ routine: { id: data.id, label: data.label, cron: data.cron_expression, type: data.routine_type, enabled: data.enabled } })
+})
+
+// ---------------------------------------------------------------------------
 // PATCH /api/routines/:id — toggle routine enabled
 // Body: { enabled: boolean }
 // ---------------------------------------------------------------------------
@@ -723,6 +760,7 @@ apiRouter.get('/dashboard', async (c) => {
       .select('from_phone, body, created_at')
       .eq('user_id', userId)
       .eq('direction', 'in')
+      .is('read_at', null)  // Only show unread — messages vanish from queue once heard
       .gte('created_at', new Date(Date.now() - 86_400_000).toISOString())
       .order('created_at', { ascending: false }),
     supabase.from('users').select('name').eq('id', userId).single(),

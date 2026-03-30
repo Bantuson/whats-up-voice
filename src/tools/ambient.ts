@@ -25,19 +25,39 @@ interface OpenWeatherResponse {
 }
 
 export async function toolGetLoadShedding(signal: AbortSignal): Promise<string> {
+  const apiKey = process.env.ESKOMSEPUSH_API_KEY
   const areaId = process.env.ESKOMSEPUSH_AREA_ID ?? 'eskde-10-fourwaysext10cityofjohannesburggauteng'
-  try {
-    const res = await fetch(
-      `https://developer.sepush.co.za/business/2.0/area?id=${encodeURIComponent(areaId)}`,
-      { headers: { Token: process.env.ESKOMSEPUSH_API_KEY! }, signal }
-    )
-    if (!res.ok) return 'I could not fetch load shedding information right now.'
-    const data = await res.json() as EskomAreaResponse
-    if (!data.events || data.events.length === 0) {
-      return 'There is no load shedding scheduled in your area right now.'
+
+  // Try EskomSePush first (precise, structured data)
+  if (apiKey) {
+    try {
+      const res = await fetch(
+        `https://developer.sepush.co.za/business/2.0/area?id=${encodeURIComponent(areaId)}`,
+        { headers: { Token: apiKey }, signal }
+      )
+      if (res.ok) {
+        const data = await res.json() as EskomAreaResponse
+        if (!data.events || data.events.length === 0) {
+          return 'There is no load shedding scheduled in your area right now.'
+        }
+        const next = data.events[0]
+        return `Load shedding is scheduled in your area from ${next.start} to ${next.end}.`
+      }
+    } catch {
+      // fall through to web search
     }
-    const next = data.events[0]
-    return `Load shedding is scheduled in your area from ${next.start} to ${next.end}.`
+  }
+
+  // Fallback: Tavily web search (works without EskomSePush key, handles rate limits)
+  try {
+    const result = await getClient().search('Johannesburg load shedding schedule today stage', {
+      searchDepth: 'basic',
+      maxResults: 2,
+      includeAnswer: true,
+      topic: 'general',
+    })
+    const answer = result.answer ?? result.results.map((r: { content: string }) => r.content).slice(0, 1).join(' ')
+    return answer ? `Based on online sources: ${answer}` : 'I could not fetch load shedding information right now.'
   } catch {
     return 'I could not fetch load shedding information right now.'
   }

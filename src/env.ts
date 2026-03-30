@@ -10,12 +10,11 @@ const REQUIRED_ENV_VARS = [
   'TWILIO_WHATSAPP_NUMBER',
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'REDIS_URL',
   'API_BEARER_TOKEN',
-  'ESKOMSEPUSH_API_KEY',
-  'OPENWEATHER_API_KEY',
   'TAVILY_API_KEY',
-  'SUPABASE_ANON_KEY',
+  // REDIS_URL optional — server boots without it (BullMQ heartbeat/cron disabled)
+  // ESKOMSEPUSH_API_KEY optional — load shedding falls back to Tavily web search
+  // OPENWEATHER_API_KEY optional — weather shows as unavailable if missing
 ] as const
 
 export function validateEnv(): void {

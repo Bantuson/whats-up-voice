@@ -57,6 +57,7 @@ export async function processHeartbeat(job: { data: HeartbeatJobData }): Promise
   if (contact?.is_priority === true) {
     const spoken = `Priority message from ${contact.name}: ${messageBody ?? 'a voice note'}. Say reply to ${contact.name} to respond.`
     await pushInterrupt(userId, spoken, true)
+    await markMessageRead(messageLogId, userId)
     await logDecision(userId, messageLogId, 'interrupt', 'priority contact')
     return
   }
@@ -67,6 +68,7 @@ export async function processHeartbeat(job: { data: HeartbeatJobData }): Promise
     const spokenPhone = formatPhoneForSpeech(phone)
     const spoken = `You have a message from an unknown number: ${spokenPhone}. Would you like to save this contact?`
     await pushInterrupt(userId, spoken, true)
+    await markMessageRead(messageLogId, userId)
     await logDecision(userId, messageLogId, 'interrupt', 'unknown number')
     return
   }
@@ -88,6 +90,7 @@ export async function processHeartbeat(job: { data: HeartbeatJobData }): Promise
   if (mediaType === 'audio' || mediaType === 'voice') {
     const spoken = `Voice note from ${contact.name}. Say play voice note to listen.`
     await pushInterrupt(userId, spoken, true)
+    await markMessageRead(messageLogId, userId)
     await logDecision(userId, messageLogId, 'interrupt', 'voice note')
     return
   }
@@ -101,12 +104,26 @@ export async function processHeartbeat(job: { data: HeartbeatJobData }): Promise
     ? `New message from ${contact.name}: ${messageBody}. Say reply to ${contact.name} to respond.`
     : `New message from ${contact.name}. Say read messages to hear the attachment.`
   await pushInterrupt(userId, spoken, true)
+  await markMessageRead(messageLogId, userId)
   await logDecision(userId, messageLogId, 'batch', 'default: text message from known contact')
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Mark a message as read in message_log so it won't appear in the queue again
+ * and won't be re-read by toolReadMessages.
+ */
+async function markMessageRead(messageLogId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('message_log')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', messageLogId)
+    .eq('user_id', userId)
+  if (error) console.error('[Worker] message_log read_at update failed:', error)
+}
 
 /**
  * Log a heartbeat decision to heartbeat_log.

@@ -58,14 +58,14 @@ export async function syncUserRoutines(): Promise<void> {
   // Step 4: Fetch and register custom reminders from routines table
   const { data: reminders } = await supabase
     .from('routines')
-    .select('id, user_id, cron_pattern')
+    .select('id, user_id, cron_expression')
     .eq('enabled', true)
-    .eq('type', 'reminder')
+    .eq('routine_type', 'reminder')
 
   for (const row of reminders ?? []) {
     await queue.upsertJobScheduler(
       `reminder:${row.user_id}:${row.id}`,
-      { pattern: row.cron_pattern },
+      { pattern: row.cron_expression },
       { name: 'reminder', data: { userId: row.user_id, routineId: row.id }, opts: { attempts: 1 } }
     )
   }

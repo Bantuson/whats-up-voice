@@ -115,10 +115,12 @@ authRouter.post('/link-vi-user', async (c) => {
     let userId: string
     if (existingUser?.id) {
       userId = existingUser.id
+      // Update name in case it changed
+      await supabase.from('users').update({ name }).eq('id', userId)
     } else {
       const { data: newUser, error: userErr } = await supabase
         .from('users')
-        .insert({ phone })
+        .insert({ phone, name })
         .select('id')
         .single()
       if (userErr || !newUser) {

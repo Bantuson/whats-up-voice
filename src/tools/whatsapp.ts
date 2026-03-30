@@ -7,13 +7,22 @@ import { formatPhoneForSpeech } from '../lib/phone'
 export async function toolReadMessages(userId: string, limit = 5): Promise<string> {
   const { data, error } = await supabase
     .from('message_log')
-    .select('from_phone, body, created_at, direction')
+    .select('id, from_phone, body, created_at, direction')
     .eq('user_id', userId)
     .eq('direction', 'in')
+    .is('read_at', null)  // Only unread messages — prevents re-reading already-heard messages
     .order('created_at', { ascending: false })
     .limit(limit)
 
   if (error || !data || data.length === 0) return 'You have no new messages.'
+
+  // Mark all fetched messages as read immediately
+  const ids = data.map((m) => m.id as string)
+  await supabase
+    .from('message_log')
+    .update({ read_at: new Date().toISOString() })
+    .in('id', ids)
+    .eq('user_id', userId)
 
   const lines: string[] = []
   for (const msg of data) {

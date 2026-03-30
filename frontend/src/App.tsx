@@ -34,6 +34,8 @@ export default function App() {
   const phase           = useAppStore((s) => s.sessionPhase)
   const initAuth        = useAppStore((s) => s.initAuth)
   const signOut         = useAppStore((s) => s.signOut)
+  const session         = useAppStore((s) => s.session)
+  const viUserName      = useAppStore((s) => s.viUserName)
 
   // Rehydrate Supabase session from localStorage on mount
   useEffect(() => {
@@ -93,23 +95,31 @@ export default function App() {
           </div>
         </div>
 
-        {/* Sidebar footer: dev log link + sign-out */}
-        <div style={{ marginTop: 'auto', padding: 'var(--space-md)', borderTop: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-          <NavLink
-            to="/log"
-            title="Dev log"
-            className={({ isActive }) => 'sidebar-link' + (isActive ? ' active' : '')}
-            style={{ flex: 1, opacity: 0.5 }}
-          >
-            <span className="sidebar-icon">◻</span>
-            <span className="sidebar-label">Dev log</span>
-          </NavLink>
+        {/* Sidebar footer: user identity + sign-out */}
+        <div style={{ marginTop: 'auto', padding: 'var(--space-md)', borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ fontFamily: 'var(--font-data)', fontSize: 10, lineHeight: 1.6, marginBottom: 10 }}>
+            <div style={{ color: 'var(--color-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 9 }}>Caregiver</div>
+            <div style={{ color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="sidebar-label">
+              {session?.user.email ?? '—'}
+            </div>
+            {viUserName && (
+              <>
+                <div style={{ color: 'var(--color-text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', fontSize: 9, marginTop: 6 }}>VI User</div>
+                <div style={{ color: 'var(--color-accent, #00E87A)' }} className="sidebar-label">{viUserName}</div>
+              </>
+            )}
+          </div>
           <button
             onClick={() => signOut()}
-            title="Sign out"
-            style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'var(--font-data)', fontSize: 'var(--size-label)', padding: 'var(--space-sm)' }}
+            style={{
+              width: '100%', background: 'none', border: '1px solid var(--color-border)',
+              color: 'var(--color-text-muted)', cursor: 'pointer', fontFamily: 'var(--font-data)',
+              fontSize: 10, padding: '5px 8px', borderRadius: 4,
+              display: 'flex', alignItems: 'center', gap: 6, letterSpacing: '0.06em',
+            }}
           >
-            ⏻
+            <span>⏻</span>
+            <span className="sidebar-label">Sign out</span>
           </button>
         </div>
 

@@ -16,9 +16,12 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS users (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   phone      TEXT NOT NULL UNIQUE,
+  name       TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+-- Add name column to existing deployments (idempotent)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY IF NOT EXISTS "users: user can access own row"
   ON users FOR ALL USING (id = auth.uid()) WITH CHECK (id = auth.uid());

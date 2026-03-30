@@ -8,11 +8,13 @@ import { sanitiseForSpeech } from './sanitiser'
 import { toolReadMessages, toolSendMessage, toolResolveContact } from '../tools/whatsapp'
 import { toolGetContact, toolSaveContact, toolListContacts, toolSetPriority } from '../tools/contacts'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
+import { toolCreateRoutine } from '../tools/routines'
 import { recallMemories } from '../memory/recall'
 import { generatePodcast, toolPlayPodcast } from '../tools/podcast'
 import { activateTranslation, deactivateTranslation, translateUtterance } from '../tools/translation'
 import { startNavigation, stopNavigation, describeWaypoint } from '../tools/navigation'
 import { getState, type ConversationTurn } from '../session/machine'
+import { supabase } from '../db/client'
 
 // Lazy singleton — created on first use so tests can mock '@anthropic-ai/sdk' before first call.
 let _anthropic: Anthropic | null = null
@@ -25,8 +27,9 @@ function getAnthropic() {
 const MAX_TOOL_CALLS = 10
 
 export const ORCHESTRATOR_SYSTEM_PROMPT = `
-You are a voice assistant for a visually impaired South African WhatsApp user.
+You are a deeply personal AI voice companion for a visually impaired South African WhatsApp user.
 All your responses will be spoken aloud via text-to-speech.
+You know this person — use their name when appropriate, recall their preferences, and respond with warmth.
 
 CRITICAL RULES:
 1. Never use markdown formatting: no **, no ##, no -, no \`, no bullet points
@@ -40,7 +43,10 @@ CRITICAL RULES:
    c. The SendMessage tool returns a readBack string — speak that string verbatim as your reply.
    d. NEVER describe or announce sending a message without calling SendMessage first.
       Generating "Just to confirm..." text without the tool call breaks the confirmation flow.
-7. All database queries are already filtered by the current user — do not ask for user identity
+7. ROUTINES — when the user asks to set a reminder or schedule something:
+   a. Convert the request to a cron expression (e.g. "every morning at 7" → "0 7 * * *")
+   b. Call CreateRoutine with a clear label so the user knows what will run.
+   c. Confirm back with the schedule in plain English.
 `.trim()
 
 export const ALL_TOOLS: Anthropic.Tool[] = [
@@ -205,6 +211,19 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
     description: 'Re-describe the current navigation waypoint. Use when user asks "where am I" or "what is around me" during navigation.',
     input_schema: { type: 'object', properties: {}, required: [] },
   },
+  {
+    name: 'CreateRoutine',
+    description: 'Create a scheduled routine or reminder for the user. Use when they ask to set a daily reminder, morning briefing, or any recurring task.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        routineType: { type: 'string', description: 'Type: morning_briefing, reminder, evening_digest, or custom' },
+        cronExpression: { type: 'string', description: 'Cron expression e.g. "0 7 * * 1-5" for Mon–Fri 7am, "0 9 * * *" for daily 9am' },
+        label: { type: 'string', description: 'Plain English label e.g. "Morning briefing at 7am weekdays"' },
+      },
+      required: ['routineType', 'cronExpression', 'label'],
+    },
+  },
 ]
 
 async function executeTool(
@@ -258,6 +277,8 @@ async function executeTool(
       await streamSpeech(desc, userId)
       return { description: desc }
     }
+    case 'CreateRoutine':
+      return toolCreateRoutine(userId, input.routineType as string, input.cronExpression as string, input.label as string)
     default:
       return { error: `Unknown tool: ${name}` }
   }
@@ -269,13 +290,34 @@ export async function runOrchestrator(
   signal: AbortSignal,
   conversationHistory: ConversationTurn[] = [],
 ): Promise<string> {
-  // MEM-03: Recall top-5 relevant memories and inject into system prompt.
   let systemPrompt = ORCHESTRATOR_SYSTEM_PROMPT
+
+  // Inject user identity and preferences so the agent knows who it's talking to
+  try {
+    const [userRes, profileRes] = await Promise.allSettled([
+      supabase.from('users').select('name, phone').eq('id', userId).single(),
+      supabase.from('user_profile').select('language, location').eq('user_id', userId).single(),
+    ])
+    const user = userRes.status === 'fulfilled' ? userRes.value.data : null
+    const profile = profileRes.status === 'fulfilled' ? profileRes.value.data : null
+    const lines: string[] = []
+    if (user?.name)      lines.push(`Name: ${user.name}`)
+    if (user?.phone)     lines.push(`Phone: ${user.phone}`)
+    if (profile?.language) lines.push(`Language: ${profile.language}`)
+    if (profile?.location) lines.push(`Location: ${profile.location}`)
+    if (lines.length > 0) {
+      systemPrompt = `${systemPrompt}\n\nUser profile:\n${lines.join('\n')}`
+    }
+  } catch {
+    // Non-fatal — agent still works without profile context
+  }
+
+  // MEM-03: Recall top-5 relevant memories and inject into system prompt.
   try {
     const memories = await recallMemories(userId, transcript)
     if (memories.length > 0) {
       const memoryBlock = memories.map((m) => `- ${m.content}`).join('\n')
-      systemPrompt = `${ORCHESTRATOR_SYSTEM_PROMPT}\n\nRelevant memories from past sessions:\n${memoryBlock}`
+      systemPrompt = `${systemPrompt}\n\nRelevant memories from past sessions:\n${memoryBlock}`
     }
   } catch {
     // Memory recall failure is non-fatal — continue without context
