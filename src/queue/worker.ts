@@ -134,9 +134,9 @@ async function logDecision(
  * Replaced in Phase 4 — calls streamSpeech via connections.pushInterrupt.
  * If no WebSocket is connected, logs only — does not throw.
  */
-async function pushInterrupt(userId: string, spoken: string): Promise<void> {
+async function pushInterrupt(userId: string, spoken: string, autoListen = false): Promise<void> {
   const { pushInterrupt: deliver } = await import('../ws/connections')
-  await deliver(userId, spoken)
+  await deliver(userId, spoken, autoListen)
   console.log(`[Worker] Interrupt pushed to ${userId}: ${spoken.slice(0, 60)}`)
 }
 

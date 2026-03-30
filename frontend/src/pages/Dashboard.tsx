@@ -241,28 +241,30 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Mic button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          type="button"
-          onClick={isRecording ? stopRecording : startRecording}
-          title={isRecording ? 'Stop' : 'Tap to speak'}
-          style={{
-            width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer',
-            background: isRecording ? '#ff4444' : 'var(--color-accent, #00E87A)',
-            color: '#000', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: isRecording ? '0 0 0 5px rgba(255,68,68,0.25)' : 'none',
-            transition: 'background 0.15s, box-shadow 0.15s',
-            flexShrink: 0,
-          }}
-        >
-          {isRecording ? '■' : '🎙'}
-        </button>
-        <span style={{ fontFamily: 'var(--font-data, monospace)', fontSize: 12, color: 'var(--color-text-muted)' }}>
-          {isRecording ? 'Recording — tap to stop' : autoListenActive ? 'Listening for reply…' : 'Tap to speak'}
-        </span>
-        {micError && <span style={{ fontSize: 11, color: '#ff4444' }}>{micError}</span>}
-      </div>
+      {/* Mic button — hidden while agent is speaking */}
+      {sessionPhase !== 'playing' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            type="button"
+            onClick={isRecording ? stopRecording : startRecording}
+            title={isRecording ? 'Stop' : 'Tap to speak'}
+            style={{
+              width: 40, height: 40, borderRadius: '50%', border: 'none', cursor: 'pointer',
+              background: isRecording ? '#ff4444' : 'var(--color-accent, #00E87A)',
+              color: '#000', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: isRecording ? '0 0 0 5px rgba(255,68,68,0.25)' : 'none',
+              transition: 'background 0.15s, box-shadow 0.15s',
+              flexShrink: 0,
+            }}
+          >
+            {isRecording ? '■' : '🎙'}
+          </button>
+          <span style={{ fontFamily: 'var(--font-data, monospace)', fontSize: 12, color: 'var(--color-text-muted)' }}>
+            {isRecording ? 'Recording — tap to stop' : autoListenActive ? 'Listening for reply…' : 'Tap to speak'}
+          </span>
+          {micError && <span style={{ fontSize: 11, color: '#ff4444' }}>{micError}</span>}
+        </div>
+      )}
 
       {/* Chat log — persists across navigation */}
       {chatLog.length > 0 && (

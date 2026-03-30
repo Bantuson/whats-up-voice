@@ -8,7 +8,7 @@ import crypto from 'node:crypto'
  *   1. Sort POST params alphabetically by key (decoded values)
  *   2. Concatenate as key₁value₁key₂value₂… (no separator)
  *   3. Prepend the full webhook URL: url + concatenatedParams
- *   4. HMAC-SHA256(data, authToken) → base64
+ *   4. HMAC-SHA1(data, authToken) → base64
  *   5. Constant-time compare with X-Twilio-Signature header value
  *
  * @param url       - Full webhook URL including protocol and host (e.g. https://…/webhook/whatsapp)
@@ -32,9 +32,9 @@ export function verifyTwilioSignature(
   // Step 3: prepend URL
   const data = url + paramStr
 
-  // Step 4: HMAC-SHA256, base64-encode
+  // Step 4: HMAC-SHA1, base64-encode (Twilio uses SHA1, not SHA256)
   const expected = crypto
-    .createHmac('sha256', authToken)
+    .createHmac('sha1', authToken)
     .update(data, 'utf8')
     .digest('base64')
 

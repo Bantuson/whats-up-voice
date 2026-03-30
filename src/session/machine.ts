@@ -72,7 +72,12 @@ function persistPendingMessage(userId: string, msg: { to: string; toName?: strin
 }
 
 export async function hydratePendingMessage(userId: string): Promise<void> {
-  if (sessions.has(userId)) return
+  // Skip if in-memory session already has a pending message — nothing to restore.
+  // Do NOT skip on an existing idle/playing session: a server restart or spurious
+  // request between "shall I go ahead?" and the user's "yes" creates an idle session
+  // that would otherwise permanently block re-hydration and break confirmation.
+  const existing = sessions.get(userId)
+  if (existing?.pendingMessage) return
   try {
     const { supabase } = await import('../db/client')
     const { data } = await supabase
@@ -81,8 +86,12 @@ export async function hydratePendingMessage(userId: string): Promise<void> {
       .eq('user_id', userId)
       .single()
     if (data?.pending_message) {
-      const state: SessionState = { phase: 'awaiting_approval', pendingMessage: data.pending_message, lastActivity: Date.now() }
-      sessions.set(userId, state)
+      sessions.set(userId, {
+        ...(existing ?? {}),
+        phase: 'awaiting_approval',
+        pendingMessage: data.pending_message,
+        lastActivity: Date.now(),
+      })
       console.log(`[Session] Hydrated pending message for ${userId} from Supabase`)
     }
   } catch (err) {

@@ -60,14 +60,12 @@ export function parsePodcastSegments(script: string): PodcastSegment[] {
 
 // stitchPodcastAudio — synthesises each segment with the appropriate OpenAI voice
 // (THABO=onyx, NALEDI=nova by default) and concatenates raw MP3 frames.
+// Segments are synthesised in parallel to keep total time under ~5s.
 export async function stitchPodcastAudio(segments: PodcastSegment[]): Promise<Buffer> {
-  const buffers: Buffer[] = []
-  for (const seg of segments) {
-    if (!seg.text.trim()) continue
-    // Pass the speaker label directly — openai-tts maps THABO→onyx, NALEDI→nova
-    const buf = await synthesiseSpeechForVoice(seg.text, seg.speaker, 'en')
-    buffers.push(buf)
-  }
+  const active = segments.filter((s) => s.text.trim())
+  const buffers = await Promise.all(
+    active.map((seg) => synthesiseSpeechForVoice(seg.text, seg.speaker, 'en'))
+  )
   return Buffer.concat(buffers)
 }
 
@@ -140,16 +138,15 @@ export async function generatePodcast(
   const textBlock = response.content.find((b) => b.type === 'text') as { type: 'text'; text: string } | undefined
   const rawScript = textBlock?.text ?? `I could not generate a podcast about ${topic} right now.`
 
-  // Step 3: Sanitise (strip accidental markdown from non-marker content)
-  const script = sanitiseForSpeech(rawScript)
-
-  // Step 4: Persist to DB — fire-and-forget
+  // Step 3: Persist raw script to DB — preserves [THABO]/[NALEDI] markers and newlines
+  // so parsePodcastSegments can re-parse it for two-voice stitching on playback.
   supabase
     .from('generated_podcasts')
-    .insert({ user_id: userId, topic, script })
+    .insert({ user_id: userId, topic, script: rawScript })
     .then(({ error }) => { if (error) console.error('[Podcast] DB insert failed:', error.message) })
 
-  return script
+  // Step 4: Return plain-text version for immediate TTS (strips markers, collapses to single voice)
+  return scriptToPlainText(rawScript)
 }
 
 // scriptToPlainText — strips [THABO]/[NALEDI] markers for single-voice TTS playback
@@ -160,4 +157,36 @@ export function scriptToPlainText(script: string): string {
     .map((line) => line.replace(/^\[(THABO|NALEDI)\]:\s*/, ''))
     .filter(Boolean)
     .join(' ')
+}
+
+// toolPlayPodcast — look up a previously generated podcast and return its plain-text script.
+// If topicKeyword is provided, searches by topic. Falls back to most recent if no match or no keyword.
+export async function toolPlayPodcast(userId: string, topicKeyword?: string): Promise<string> {
+  let query = supabase
+    .from('generated_podcasts')
+    .select('topic, script')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (topicKeyword?.trim()) {
+    query = supabase
+      .from('generated_podcasts')
+      .select('topic, script')
+      .eq('user_id', userId)
+      .ilike('topic', `%${topicKeyword.trim()}%`)
+      .order('created_at', { ascending: false })
+      .limit(1)
+  }
+
+  const { data: rows } = await query
+  const podcast = rows?.[0]
+
+  if (!podcast) {
+    return topicKeyword?.trim()
+      ? `I don't have a podcast about ${topicKeyword} saved. Say tell me about ${topicKeyword} to generate one.`
+      : "You don't have any saved podcasts yet. Say tell me about a topic to generate one."
+  }
+
+  return scriptToPlainText(podcast.script as string)
 }

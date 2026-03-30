@@ -24,11 +24,47 @@ interface Routine {
   enabled: boolean
 }
 
+interface Podcast {
+  id: string
+  topic: string
+  script: string
+  created_at: string
+}
+
+interface PodcastSegment {
+  speaker: 'THABO' | 'NALEDI'
+  text: string
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 const apiToken = () => (import.meta.env.VITE_API_TOKEN as string | undefined) ?? ''
 const authHdr  = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${apiToken()}` })
+
+function parsePodcastSegments(script: string): PodcastSegment[] {
+  const segments: PodcastSegment[] = []
+  const lines = script.split('\n')
+  let current: PodcastSegment | null = null
+  for (const line of lines) {
+    const tMatch = line.match(/^\[THABO\]:\s*(.+)/)
+    const nMatch = line.match(/^\[NALEDI\]:\s*(.+)/)
+    if (tMatch) { if (current) segments.push(current); current = { speaker: 'THABO', text: tMatch[1].trim() } }
+    else if (nMatch) { if (current) segments.push(current); current = { speaker: 'NALEDI', text: nMatch[1].trim() } }
+    else if (current && line.trim()) current.text += ' ' + line.trim()
+  }
+  if (current) segments.push(current)
+  return segments
+}
+
+// Strip [THABO]: / [NALEDI]: markers and join into plain text for single-voice TTS playback.
+function scriptToPlainText(script: string): string {
+  return script
+    .split('\n')
+    .map((line) => line.replace(/^\[(THABO|NALEDI)\]:\s*/, ''))
+    .filter(Boolean)
+    .join(' ')
+}
 
 function humanCron(cron: string): string {
   if (cron === '0 7 * * 1-5') return 'Weekdays at 7:00'
@@ -122,11 +158,21 @@ export function Configure() {
   // ── Routines state ──
   const [routines, setRoutines] = useState<Routine[]>([])
 
+  // ── Podcasts state ──
+  const [podcasts,     setPodcasts]     = useState<Podcast[]>([])
+  const [podcastError, setPodcastError] = useState('')
+  const [playError,    setPlayError]    = useState('')
+  const [playingId,    setPlayingId]    = useState<string | null>(null)
+  const [loadingId,    setLoadingId]    = useState<string | null>(null)
+  const [expandedId,   setExpandedId]   = useState<string | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
   // ── Section refs for nav ──
   const profileRef  = useRef<HTMLDivElement>(null)
   const contactsRef = useRef<HTMLDivElement>(null)
   const scheduleRef = useRef<HTMLDivElement>(null)
   const activityRef = useRef<HTMLDivElement>(null)
+  const podcastsRef = useRef<HTMLDivElement>(null)
 
   // ── Load profile ──
   useEffect(() => {
@@ -237,6 +283,55 @@ export function Configure() {
     setRoutines((prev) => prev.map((r) => r.id === routine.id ? { ...r, enabled: !r.enabled } : r))
   }
 
+  // ── Load podcasts ──
+  useEffect(() => {
+    if (!userId) return
+    fetch(`/api/podcasts?userId=${userId}`, { headers: { Authorization: `Bearer ${apiToken()}` } })
+      .then(async (r) => {
+        if (!r.ok) { setPodcastError(`Server error ${r.status}`); return }
+        const d = await r.json() as { podcasts: Podcast[] }
+        setPodcasts(d.podcasts)
+      })
+      .catch(() => setPodcastError('Could not load podcasts'))
+  }, [userId])
+
+  // ── Play podcast ──
+  const playPodcast = async (podcast: Podcast) => {
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current = null
+      if (playingId === podcast.id) { setPlayingId(null); return }
+    }
+    setPlayError('')
+    setLoadingId(podcast.id)
+    // Use /api/tts with plain text — one fast call, no multi-voice stitching timeout.
+    // The script is already in-memory from the podcast list, so we skip the audio endpoint.
+    const plainText = scriptToPlainText(podcast.script)
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: authHdr(),
+        body: JSON.stringify({ text: plainText, userId: userId ?? '' }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({ error: `Server error ${res.status}` })) as { error?: string }
+        setPlayError(json.error ?? `Playback failed (${res.status})`)
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      audioRef.current = audio
+      setPlayingId(podcast.id)
+      audio.play().catch((e: unknown) => setPlayError(e instanceof Error ? e.message : 'Playback failed'))
+      audio.onended = () => { URL.revokeObjectURL(url); setPlayingId(null); audioRef.current = null }
+    } catch (e: unknown) {
+      setPlayError(e instanceof Error ? e.message : 'Network error')
+    } finally {
+      setLoadingId(null)
+    }
+  }
+
   // Section jump
   const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) =>
     ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -261,8 +356,8 @@ export function Configure() {
         </div>
         {/* Section jump nav */}
         <div style={{ display: 'flex', gap: 4 }}>
-          {(['Profile', 'Contacts', 'Schedule', 'Activity'] as const).map((label, i) => {
-            const refs = [profileRef, contactsRef, scheduleRef, activityRef]
+          {(['Profile', 'Contacts', 'Schedule', 'Activity', 'Podcasts'] as const).map((label, i) => {
+            const refs = [profileRef, contactsRef, scheduleRef, activityRef, podcastsRef]
             return (
               <button
                 key={label}
@@ -480,7 +575,7 @@ export function Configure() {
         </section>
 
         {/* ── SECTION: Activity ── */}
-        <section ref={activityRef} style={{ paddingBottom: 40 }}>
+        <section ref={activityRef}>
           <SectionHeader
             label="Activity"
             sub={heartbeatLog.length > 0 ? `${heartbeatLog.length} events — live` : 'Waiting for WhatsApp messages'}
@@ -535,6 +630,108 @@ export function Configure() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </section>
+
+        {/* ── SECTION: Podcasts ── */}
+        <section ref={podcastsRef} style={{ paddingBottom: 40 }}>
+          <SectionHeader
+            label="Podcasts"
+            sub={podcasts.length > 0 ? `${podcasts.length} generated` : 'Say "tell me about [topic]" to generate one'}
+          />
+
+          {podcastError && (
+            <p style={{ fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{podcastError}</p>
+          )}
+          {playError && (
+            <p style={{ fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--red)', marginBottom: 12 }}>{playError}</p>
+          )}
+
+          {!podcastError && podcasts.length === 0 && (
+            <p style={{ fontFamily: 'var(--sans)', fontSize: 13, color: 'var(--dim)', fontStyle: 'italic' }}>
+              No podcasts yet. Say "tell me about [topic]" via voice to generate one.
+            </p>
+          )}
+
+          {podcasts.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {podcasts.map((p) => {
+                const segments = parsePodcastSegments(p.script)
+                const wordCount = p.script.replace(/\[(THABO|NALEDI)\]:\s*/g, '').split(' ').length
+                const isExpanded = expandedId === p.id
+                return (
+                  <div
+                    key={p.id}
+                    style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}
+                  >
+                    {/* Header row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px' }}>
+                      <button
+                        type="button"
+                        onClick={() => void playPodcast(p)}
+                        disabled={loadingId !== null && loadingId !== p.id}
+                        style={{
+                          width: 32, height: 32, borderRadius: '50%', border: 'none', cursor: 'pointer', flexShrink: 0,
+                          background: playingId === p.id ? 'var(--red)' : 'var(--green)',
+                          color: '#000', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          opacity: loadingId !== null && loadingId !== p.id ? 0.4 : 1,
+                        }}
+                      >
+                        {loadingId === p.id ? '…' : playingId === p.id ? '■' : '▷'}
+                      </button>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--sans)', fontSize: 13, fontWeight: 600, color: 'var(--white)', textTransform: 'capitalize', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.topic}
+                        </div>
+                        <div style={{ fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--dim)', marginTop: 2 }}>
+                          {new Date(p.created_at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {' · '}{Math.max(1, Math.round(wordCount / 140))} min
+                          {' · '}{segments.length} exchanges
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+                        {playingId === p.id && (
+                          <div style={{ fontFamily: 'var(--mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--green)', textTransform: 'uppercase' }}>Playing</div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--mono)', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', color: 'var(--mid)', textTransform: 'uppercase', padding: '4px 8px' }}
+                        >
+                          {isExpanded ? 'Hide' : 'Script'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Script transcript */}
+                    {isExpanded && (
+                      <div style={{ borderTop: '1px solid var(--border)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
+                        {segments.length > 0 ? segments.map((seg, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                            <div style={{
+                              flexShrink: 0, width: 52, fontFamily: 'var(--mono)', fontSize: 9, fontWeight: 700,
+                              letterSpacing: '0.06em', textTransform: 'uppercase', paddingTop: 2,
+                              color: seg.speaker === 'THABO' ? 'var(--green)' : '#A78BFA',
+                            }}>
+                              {seg.speaker}
+                            </div>
+                            <div style={{ fontFamily: 'var(--sans)', fontSize: 12, color: 'var(--white)', lineHeight: 1.5 }}>
+                              {seg.text}
+                            </div>
+                          </div>
+                        )) : (
+                          <div style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--mid)', whiteSpace: 'pre-wrap' }}>
+                            {p.script}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           )}
         </section>

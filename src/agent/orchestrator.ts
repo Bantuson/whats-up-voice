@@ -9,7 +9,7 @@ import { toolReadMessages, toolSendMessage, toolResolveContact } from '../tools/
 import { toolGetContact, toolSaveContact, toolListContacts, toolSetPriority } from '../tools/contacts'
 import { toolGetLoadShedding, toolGetWeather, toolWebSearch } from '../tools/ambient'
 import { recallMemories } from '../memory/recall'
-import { generatePodcast } from '../tools/podcast'
+import { generatePodcast, toolPlayPodcast } from '../tools/podcast'
 import { activateTranslation, deactivateTranslation, translateUtterance } from '../tools/translation'
 import { startNavigation, stopNavigation, describeWaypoint } from '../tools/navigation'
 import { getState, type ConversationTurn } from '../session/machine'
@@ -34,7 +34,12 @@ CRITICAL RULES:
 3. Phone numbers must be spoken digit-by-digit (e.g., "plus 2 7 8 3 1")
 4. Ask only one question at a time
 5. Keep responses brief — the user cannot see; every extra word costs attention
-6. When composing a message, always read back the recipient name and message for confirmation
+6. SENDING MESSAGES — MANDATORY TOOL SEQUENCE:
+   a. First call ResolveContact to get the phone number (unless you already have it).
+   b. Then call SendMessage with the resolved phone and message body.
+   c. The SendMessage tool returns a readBack string — speak that string verbatim as your reply.
+   d. NEVER describe or announce sending a message without calling SendMessage first.
+      Generating "Just to confirm..." text without the tool call breaks the confirmation flow.
 7. All database queries are already filtered by the current user — do not ask for user identity
 `.trim()
 
@@ -140,6 +145,17 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'PlayPodcast',
+    description: 'Play back a previously generated and saved podcast. Use when the user asks to replay, listen to, or play back a podcast they already heard. Optionally filter by topic keyword. Do NOT use this to generate new content — use GeneratePodcast for that.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        topicKeyword: { type: 'string', description: 'Optional topic keyword to find a specific saved podcast. Omit to play the most recent one.' },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'ActivateTranslation',
     description: 'Start real-time translation mode. All subsequent user speech will be translated to the target language and spoken back. Use when user asks to translate to a specific language.',
     input_schema: {
@@ -220,6 +236,8 @@ async function executeTool(
       return toolWebSearch(input.query as string, signal)
     case 'GeneratePodcast':
       return generatePodcast(input.topic as string, userId, (input.shortVersion as boolean) ?? false)
+    case 'PlayPodcast':
+      return toolPlayPodcast(userId, input.topicKeyword as string | undefined)
     case 'ActivateTranslation':
       return activateTranslation(userId, input.targetLanguage as string)
     case 'DeactivateTranslation':
@@ -270,6 +288,10 @@ export async function runOrchestrator(
   ]
   let toolCallCount = 0
 
+  // Podcast content captured during tool execution — returned as spoken text so
+  // the full script reaches the frontend TTS path instead of Claude's short confirmation.
+  let capturedPodcastScript: string | null = null
+
   while (toolCallCount < MAX_TOOL_CALLS) {
     const response = await getAnthropic().messages.create(
       {
@@ -285,6 +307,16 @@ export async function runOrchestrator(
     messages.push({ role: 'assistant', content: response.content })
 
     if (response.stop_reason === 'end_turn') {
+      if (capturedPodcastScript) {
+        // Stream the full podcast via WebSocket — avoids browser autoplay expiry on the HTTP path.
+        // Fire-and-forget: starts OpenAI TTS async while the brief HTTP confirmation plays first.
+        const { streamSpeech } = await import('../tts/openai-tts')
+        streamSpeech(capturedPodcastScript, userId).catch((e) => console.error('[Podcast] streamSpeech failed:', e))
+        // Return Claude's short "it's ready" confirmation for the HTTP TTS path (plays quickly)
+        const textBlock = response.content.find((b) => b.type === 'text') as { type: 'text'; text: string } | undefined
+        const raw = textBlock?.text ?? 'Your podcast is ready and now playing.'
+        return sanitiseForSpeech(raw)
+      }
       const textBlock = response.content.find((b) => b.type === 'text') as { type: 'text'; text: string } | undefined
       const raw = textBlock?.text ?? 'I could not process that request.'
       return sanitiseForSpeech(raw)
@@ -296,6 +328,21 @@ export async function runOrchestrator(
     for (const block of response.content) {
       if (block.type !== 'tool_use') continue
       toolCallCount++
+
+      // GeneratePodcast: capture the script and return a brief status to Claude
+      // so Claude's response is a short confirmation, not the full 500-word script.
+      if (block.name === 'GeneratePodcast') {
+        const input = block.input as Record<string, unknown>
+        const script = await generatePodcast(input.topic as string, userId, (input.shortVersion as boolean) ?? false)
+        capturedPodcastScript = script
+        toolResults.push({
+          type: 'tool_result',
+          tool_use_id: block.id,
+          content: JSON.stringify({ status: 'ready', message: `Podcast about "${input.topic as string}" is ready.` }),
+        })
+        continue
+      }
+
       const result = await executeTool(block.name, block.input as Record<string, unknown>, userId, signal)
       toolResults.push({
         type: 'tool_result',

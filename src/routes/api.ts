@@ -313,18 +313,22 @@ apiRouter.post('/voice/command', async (c) => {
   }
 
   // ------------------------------------------------------------------
-  // FAST PATH: podcast_request — research + synthesise + TTS (VI-PODCAST-01)
+  // FAST PATH: podcast_request — research + synthesise + stream via WebSocket (VI-PODCAST-01)
+  // WebSocket delivery avoids browser autoplay policy (podcast generation takes 15-20s,
+  // which exceeds the ~1-3s user-gesture window required for audio.play() on HTTP path).
   // ------------------------------------------------------------------
   if (intent === 'podcast_request') {
     // Extract topic from transcript — strip known trigger phrases
     const topic = transcript
       .replace(/^(tell me (something |a story |more )?(about|on)|make (me )?a podcast (about)?|i want to hear about|podcast about|tell me about)\s*/i, '')
       .trim() || transcript
-    // generatePodcast: Tavily research → Claude synthesis → DB save → returns script
-    // Audio delivery is handled by the frontend via /api/tts (HTTP, reliable)
-    // No WebSocket call here — avoids triple-delivery (streamSpeech×2 + HTTP)
-    const spoken = await generatePodcast(topic, userId)
-    return c.json({ spoken, action: 'podcast', requiresConfirmation: false })
+    // generatePodcast: Tavily research → Claude synthesis → DB save → returns plain-text script
+    const podcastScript = await generatePodcast(topic, userId)
+    // Stream full podcast via WebSocket so audio plays without autoplay restrictions.
+    // Fire-and-forget: starts OpenAI TTS call async while HTTP response is already delivered.
+    streamSpeech(podcastScript, userId).catch((e) => console.error('[Podcast] streamSpeech failed:', e))
+    // Return brief confirmation for immediate HTTP TTS (spoken quickly, no autoplay issue)
+    return deliverSpoken(c, userId, `Playing your podcast about ${topic} now.`, 'podcast')
   }
 
   // ------------------------------------------------------------------
@@ -782,6 +786,7 @@ apiRouter.get('/dashboard', async (c) => {
 async function handleConfirmSend(c: any, userId: string) {
   const state = getState(userId)
   if (state.phase !== 'awaiting_approval' || !state.pendingMessage) {
+    console.warn(`[ConfirmSend] No pending message — phase=${state.phase} hasPending=${!!state.pendingMessage} userId=${userId}`)
     return c.json({ spoken: 'There is no pending message to confirm.', action: 'error', requiresConfirmation: false })
   }
   const { to, toName, body } = state.pendingMessage
